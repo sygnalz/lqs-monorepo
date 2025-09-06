@@ -238,25 +238,17 @@ async function sendQualificationEmail(leadData, qualificationResult, serviceKey)
   const emailContent = generateEmailContent(leadData, qualificationResult);
   
   // Log communication attempt to database BEFORE sending
+  // NOTE: Using only columns that exist in the current communications table schema
   const communicationRecord = {
     lead_id: leadData.id,
     client_id: leadData.client_id,
     type: 'email',
     recipient: leadData.lead_email,
-    subject: emailSubject,
-    content: emailContent,
     status: 'pending',
     provider: 'resend',
-    template_id: 'lead-qualification-notification',
-    template_variables: {
-      lead_name: leadData.lead_name,
-      lead_email: leadData.lead_email,
-      qualification_status: qualificationResult.status,
-      qualification_score: qualificationResult.qualification_score,
-      notes: qualificationResult.notes
-    },
-    priority: 5,
-    consent_status: 'granted' // Assuming consent for lead notifications
+    // Only include columns that actually exist in the table:
+    // id, lead_id, client_id, user_id, type, provider, recipient, status
+    // external_id, error_message, created_at, updated_at, sent_at, delivered_at
   };
 
   // Create communication record
@@ -288,8 +280,8 @@ async function sendQualificationEmail(leadData, qualificationResult, serviceKey)
         status: emailResult.success ? 'sent' : 'failed',
         external_id: emailResult.external_id,
         sent_at: timestamp,
-        error_message: emailResult.error || null,
-        external_reference: emailResult.response
+        error_message: emailResult.error || null
+        // Note: external_reference column doesn't exist in current schema
       }, serviceKey);
     }
 
@@ -313,8 +305,8 @@ async function sendQualificationEmail(leadData, qualificationResult, serviceKey)
     if (communicationId) {
       await updateCommunicationStatus(communicationId, {
         status: 'failed',
-        error_message: emailError.message,
-        external_reference: { error: emailError.message }
+        error_message: emailError.message
+        // Note: external_reference column doesn't exist in current schema
       }, serviceKey);
     }
 
