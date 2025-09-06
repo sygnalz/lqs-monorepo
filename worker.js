@@ -326,9 +326,9 @@ export default {
     // Create Lead endpoint (protected)
     if (url.pathname === '/api/leads' && request.method === 'POST') {
       try {
-        // Extract and validate JWT token
+        // Extract and validate JWT token (with robust parsing)
         const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (!authHeader) {
           return new Response(JSON.stringify({
             success: false,
             error: 'Authorization token required'
@@ -341,9 +341,67 @@ export default {
           });
         }
         
-        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        // Robust token extraction: case-insensitive Bearer, whitespace tolerant
+        const authHeaderTrimmed = authHeader.trim();
+        const bearerPrefix = /^bearer\s+/i; // Case insensitive Bearer + whitespace
+        
+        if (!bearerPrefix.test(authHeaderTrimmed)) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Authorization token required'
+          }), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Extract token with whitespace tolerance
+        const token = authHeaderTrimmed.replace(bearerPrefix, '').trim();
+        
+        // INSTRUMENTATION: Log JWT validation details
+        const timestamp = new Date().toISOString();
+        const tokenPrefix = token.substring(0, 20);
+        console.log(`[${timestamp}] JWT_VALIDATION_START:`, {
+          endpoint: '/api/leads',
+          token_prefix: tokenPrefix,
+          token_length: token.length,
+          auth_header_present: !!authHeader
+        });
+        
+        // Decode JWT payload to check expiration (for logging only)
+        let decodedPayload = null;
+        try {
+          const payloadPart = token.split('.')[1];
+          decodedPayload = JSON.parse(atob(payloadPart));
+          const currentTime = Math.floor(Date.now() / 1000);
+          console.log(`[${timestamp}] JWT_PAYLOAD_DECODED:`, {
+            token_prefix: tokenPrefix,
+            issued_at: decodedPayload.iat,
+            expires_at: decodedPayload.exp,
+            current_time: currentTime,
+            is_expired: currentTime > decodedPayload.exp,
+            time_to_expiry: decodedPayload.exp - currentTime,
+            user_id: decodedPayload.sub,
+            email: decodedPayload.email
+          });
+        } catch (decodeError) {
+          console.log(`[${timestamp}] JWT_DECODE_ERROR:`, {
+            token_prefix: tokenPrefix,
+            error: decodeError.message
+          });
+        }
         
         // Verify JWT with Supabase
+        const supabaseStartTime = Date.now();
+        console.log(`[${timestamp}] SUPABASE_VALIDATION_REQUEST:`, {
+          token_prefix: tokenPrefix,
+          endpoint: 'https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/user',
+          method: 'GET'
+        });
+        
         const userResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/user`, {
           method: 'GET',
           headers: {
@@ -352,10 +410,48 @@ export default {
           }
         });
         
+        const supabaseEndTime = Date.now();
+        console.log(`[${timestamp}] SUPABASE_VALIDATION_RESPONSE:`, {
+          token_prefix: tokenPrefix,
+          status: userResponse.status,
+          status_text: userResponse.statusText,
+          response_time_ms: supabaseEndTime - supabaseStartTime,
+          headers: {
+            content_type: userResponse.headers.get('content-type'),
+            content_length: userResponse.headers.get('content-length')
+          }
+        });
+        
         if (!userResponse.ok) {
+          // Log the actual error response from Supabase
+          let errorResponseText = '';
+          try {
+            errorResponseText = await userResponse.text();
+            console.log(`[${timestamp}] SUPABASE_ERROR_RESPONSE:`, {
+              token_prefix: tokenPrefix,
+              status: userResponse.status,
+              error_body: errorResponseText
+            });
+          } catch (e) {
+            console.log(`[${timestamp}] SUPABASE_ERROR_READ_FAILED:`, {
+              token_prefix: tokenPrefix,
+              error: e.message
+            });
+          }
+          
           return new Response(JSON.stringify({
             success: false,
-            error: 'Invalid or expired token'
+            error: 'Invalid or expired token',
+            debug_info: {
+              timestamp,
+              token_prefix: tokenPrefix,
+              status: userResponse.status,
+              decoded_payload: decodedPayload ? {
+                exp: decodedPayload.exp,
+                iat: decodedPayload.iat,
+                is_expired: decodedPayload ? (Math.floor(Date.now() / 1000) > decodedPayload.exp) : 'unknown'
+              } : null
+            }
           }), {
             status: 401,
             headers: {
@@ -367,6 +463,14 @@ export default {
         
         const userData = await userResponse.json();
         const userId = userData.id;
+        
+        // Log successful validation
+        console.log(`[${timestamp}] JWT_VALIDATION_SUCCESS:`, {
+          token_prefix: tokenPrefix,
+          user_id: userId,
+          email: userData.email,
+          validation_time_ms: Date.now() - supabaseStartTime
+        });
         
         // Get request body
         const body = await request.json();
@@ -424,6 +528,14 @@ export default {
         }
         
         const clientId = profileData[0].client_id;
+        
+        // Log successful profile lookup
+        console.log(`[${timestamp}] PROFILE_LOOKUP_SUCCESS:`, {
+          token_prefix: tokenPrefix,
+          user_id: userId,
+          client_id: clientId,
+          profile_data: profileData[0]
+        });
         
         // Create lead in database
         const leadData = {
@@ -504,9 +616,9 @@ export default {
           });
         }
         
-        // Extract and validate JWT token
+        // Extract and validate JWT token (with robust parsing)
         const authHeader = request.headers.get('Authorization');
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        if (!authHeader) {
           return new Response(JSON.stringify({
             success: false,
             error: 'Authorization token required'
@@ -519,7 +631,25 @@ export default {
           });
         }
         
-        const token = authHeader.substring(7);
+        // Robust token extraction: case-insensitive Bearer, whitespace tolerant
+        const authHeaderTrimmed = authHeader.trim();
+        const bearerPrefix = /^bearer\s+/i; // Case insensitive Bearer + whitespace
+        
+        if (!bearerPrefix.test(authHeaderTrimmed)) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Authorization token required'
+          }), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Extract token with whitespace tolerance
+        const token = authHeaderTrimmed.replace(bearerPrefix, '').trim();
         
         // Verify JWT with Supabase
         const userResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/user`, {
