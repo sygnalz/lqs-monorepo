@@ -18,11 +18,11 @@ export default {
       });
     }
     
-    // Auth signup endpoint
+    // Auth signup endpoint - COMPLETE IMPLEMENTATION
     if (url.pathname === '/api/auth/signup' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { email, password } = body;
+        const { email, password, client_name } = body;
         
         if (!email || !password) {
           return new Response(JSON.stringify({
@@ -36,30 +36,190 @@ export default {
             }
           });
         }
-        
-        // Create user using Supabase Admin API
-        const supabaseResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
-            'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`
-          },
-          body: JSON.stringify({
-            email,
-            password,
-            email_confirm: true
-          })
-        });
-        
-        const supabaseData = await supabaseResponse.json();
-        
-        if (!supabaseResponse.ok) {
+
+        const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw';
+        let createdUserId = null;
+        let createdClientId = null;
+
+        try {
+          // STEP 1: Create user using Supabase Admin API
+          const supabaseResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'apikey': SERVICE_KEY
+            },
+            body: JSON.stringify({
+              email,
+              password,
+              email_confirm: true
+            })
+          });
+          
+          const supabaseData = await supabaseResponse.json();
+          
+          if (!supabaseResponse.ok) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: supabaseData.message || 'Failed to create user'
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+
+          createdUserId = supabaseData.id;
+          
+          // STEP 2: Create client in clients table
+          const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'apikey': SERVICE_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              name: client_name || `${email.split('@')[0]}'s Organization`
+            })
+          });
+
+          if (!clientResponse.ok) {
+            // Rollback: Delete the created user
+            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+                'apikey': SERVICE_KEY
+              }
+            });
+            
+            const clientError = await clientResponse.json();
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Failed to create client organization: ' + (clientError.message || 'Unknown error')
+            }), {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+
+          const clientData = await clientResponse.json();
+          createdClientId = Array.isArray(clientData) ? clientData[0].id : clientData.id;
+
+          // STEP 3: Create profile link (user_id -> client_id mapping)
+          const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'apikey': SERVICE_KEY,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              id: createdUserId,
+              client_id: createdClientId
+            })
+          });
+
+          if (!profileResponse.ok) {
+            // Rollback: Delete client and user
+            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${createdClientId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+                'apikey': SERVICE_KEY
+              }
+            });
+
+            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_KEY}`,
+                'apikey': SERVICE_KEY
+              }
+            });
+
+            const profileError = await profileResponse.json();
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Failed to create user profile: ' + (profileError.message || 'Unknown error')
+            }), {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+
+          const profileData = await profileResponse.json();
+
+          // SUCCESS: All three steps completed
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'User account created successfully with client organization',
+            data: {
+              user: {
+                id: createdUserId,
+                email: supabaseData.email
+              },
+              client: {
+                id: createdClientId,
+                name: Array.isArray(clientData) ? clientData[0].name : clientData.name
+              },
+              profile: profileData[0]
+            }
+          }), {
+            status: 201,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+
+        } catch (transactionError) {
+          // Rollback any created resources on transaction failure
+          if (createdClientId) {
+            try {
+              await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${createdClientId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              });
+            } catch (rollbackError) {
+              console.error('Client rollback failed:', rollbackError);
+            }
+          }
+
+          if (createdUserId) {
+            try {
+              await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${SERVICE_KEY}`,
+                  'apikey': SERVICE_KEY
+                }
+              });
+            } catch (rollbackError) {
+              console.error('User rollback failed:', rollbackError);
+            }
+          }
+
           return new Response(JSON.stringify({
             success: false,
-            error: supabaseData.message || 'Failed to create user'
+            error: 'Signup transaction failed: ' + transactionError.message
           }), {
-            status: 400,
+            status: 500,
             headers: {
               'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*'
@@ -67,24 +227,10 @@ export default {
           });
         }
         
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'User created successfully',
-          data: {
-            user: supabaseData.user
-          }
-        }), {
-          status: 201,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-        
       } catch (error) {
         return new Response(JSON.stringify({
           success: false,
-          error: 'Invalid JSON in request body'
+          error: 'Invalid JSON in request body or server error'
         }), {
           status: 400,
           headers: {
