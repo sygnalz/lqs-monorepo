@@ -1,5 +1,5 @@
 // Test the fixed /api/leads endpoint functionality
-const API_BASE = 'https://lqs-uat-environment.pages.dev';
+const API_BASE = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 async function testLeadsEndpoint() {
   console.log('🧪 Testing Lead Qualification System - /api/leads endpoint\n');

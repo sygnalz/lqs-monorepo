@@ -224,7 +224,7 @@ export default {
         
         // Get request body
         const body = await request.json();
-        const { lead_name, lead_email, phone, custom_data } = body;
+        const { lead_name, lead_email } = body;
         
         if (!lead_name || !lead_email) {
           return new Response(JSON.stringify({
@@ -284,8 +284,6 @@ export default {
           client_id: clientId,
           lead_name,
           lead_email,
-          phone: phone || null,
-          custom_data: custom_data || null,
           status: 'new'
         };
         
