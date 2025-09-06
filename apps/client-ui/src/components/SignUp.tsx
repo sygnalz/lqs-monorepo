@@ -15,7 +15,7 @@ const SignUp: React.FC = () => {
   const [passwordError, setPasswordError] = useState('')
   
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { } = useAuth()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -57,9 +57,15 @@ const SignUp: React.FC = () => {
     try {
       // Remove confirmPassword from the data sent to API
       const { confirmPassword, ...signUpData } = formData
-      const response = await authService.signUp(signUpData)
-      login(response.token, response.user)
-      navigate('/dashboard')
+      await authService.signUp(signUpData)
+      
+      // Signup successful - redirect to signin with success message
+      navigate('/signin', { 
+        state: { 
+          message: 'Account created successfully! Please sign in to continue.',
+          email: formData.email
+        }
+      })
     } catch (err: any) {
       setError(err.response?.data?.error || 'Sign up failed. Please try again.')
     } finally {

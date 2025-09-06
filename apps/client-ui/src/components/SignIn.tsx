@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { authService } from '../services/auth'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -10,9 +10,23 @@ const SignIn: React.FC = () => {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+
+  // Check for success message from signup
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message)
+      if (location.state.email) {
+        setFormData(prev => ({ ...prev, email: location.state.email }))
+      }
+      // Clear the navigation state
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location.state, navigate, location.pathname])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -29,7 +43,13 @@ const SignIn: React.FC = () => {
 
     try {
       const response = await authService.signIn(formData)
-      login(response.token, response.user)
+      // Extract token and user from the correct response structure
+      const token = response.data.session.access_token
+      const user = {
+        id: response.data.user.id,
+        email: response.data.user.email
+      }
+      login(token, user)
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.response?.data?.error || 'Sign in failed. Please try again.')
@@ -74,6 +94,11 @@ const SignIn: React.FC = () => {
           </div>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+              <div className="text-sm text-green-600">{successMessage}</div>
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="text-sm text-red-600">{error}</div>
