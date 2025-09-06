@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { leadsService } from '../services/leads'
-import { Lead } from '../types/lead'
+import type { Lead } from '../types/lead'
+import HealthCheck from './HealthCheck'
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth()
@@ -90,6 +91,9 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {/* API Health Check */}
+        <HealthCheck />
+
         {/* Create Lead Form */}
         <div className="bg-white overflow-hidden shadow rounded-lg mb-8">
           <div className="px-4 py-5 sm:p-6">

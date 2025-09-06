@@ -54,6 +54,24 @@ const SignIn: React.FC = () => {
               create a new account
             </button>
           </p>
+          
+          {/* UAT Test Button */}
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-xs text-yellow-800 mb-2">
+              <strong>UAT Test Account:</strong> Use the button below to sign in with known-good UAT credentials
+            </p>
+            <button
+              onClick={() => {
+                setFormData({
+                  email: 'uat-owner-a@example.com',
+                  password: 'TestPassword123!'
+                })
+              }}
+              className="text-xs bg-yellow-200 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-300"
+            >
+              Fill UAT Credentials
+            </button>
+          </div>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (

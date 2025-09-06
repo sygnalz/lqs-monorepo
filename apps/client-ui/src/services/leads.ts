@@ -1,5 +1,5 @@
 import apiClient from '../lib/api'
-import { CreateLeadRequest, Lead, LeadResponse } from '../types/lead'
+import type { CreateLeadRequest, Lead, LeadResponse } from '../types/lead'
 
 export const leadsService = {
   async createLead(data: CreateLeadRequest): Promise<LeadResponse> {

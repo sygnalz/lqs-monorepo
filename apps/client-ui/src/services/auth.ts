@@ -1,5 +1,5 @@
 import apiClient from '../lib/api'
-import { SignUpRequest, SignInRequest, AuthResponse } from '../types/auth'
+import type { SignUpRequest, SignInRequest, AuthResponse } from '../types/auth'
 
 export const authService = {
   async signUp(data: SignUpRequest): Promise<AuthResponse> {
