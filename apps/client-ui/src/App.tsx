@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import SignIn from './components/SignIn'
 import SignUp from './components/SignUp'
 import Dashboard from './components/Dashboard'
+import NewLead from './components/NewLead'
+import LeadDetail from './components/LeadDetail'
 
 function App() {
   return (
@@ -18,6 +20,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/leads/new" 
+            element={
+              <ProtectedRoute>
+                <NewLead />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/leads/:id" 
+            element={
+              <ProtectedRoute>
+                <LeadDetail />
               </ProtectedRoute>
             } 
           />

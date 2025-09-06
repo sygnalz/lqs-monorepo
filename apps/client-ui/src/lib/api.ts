@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear invalid token and redirect to login
       localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      window.location.href = '/signin'
     }
     return Promise.reject(error)
   }

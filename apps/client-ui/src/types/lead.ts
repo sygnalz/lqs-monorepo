@@ -4,7 +4,7 @@ export interface Lead {
   email: string
   phone?: string
   source: string
-  status: 'new' | 'qualified' | 'unqualified' | 'contacted' | 'converted'
+  status: 'new' | 'qualified' | 'unqualified' | 'contacted' | 'converted' | 'processing'
   created_at: string
   updated_at: string
 }

@@ -10,5 +10,10 @@ export const leadsService = {
   async getLead(id: string): Promise<{ lead: Lead }> {
     const response = await apiClient.get(`/api/leads/${id}`)
     return response.data
+  },
+
+  async getLeads(): Promise<{ leads: Lead[] }> {
+    const response = await apiClient.get('/api/leads')
+    return response.data
   }
 }
