@@ -1,0 +1,15 @@
+name = "lqs-queue-consumer"
+main = "queue-consumer.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Queue consumer configuration
+[[queues.consumers]]
+queue = "lqs-lead-processing-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+
+# Environment variables
+[vars]
+ENVIRONMENT = "UAT"

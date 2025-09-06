@@ -1,0 +1,12 @@
+name = "lqs-lead-processor"
+main = "lead-processor.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron trigger to process leads every minute (minimum interval for Cloudflare Workers)
+[triggers]
+crons = ["* * * * *"]  # Every minute
+
+# Environment variables
+[vars]
+ENVIRONMENT = "UAT"

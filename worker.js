@@ -571,11 +571,27 @@ export default {
         }
         
         const createdLead = await leadResponse.json();
+        const leadRecord = createdLead[0] || createdLead;
+        
+        // Log successful lead creation
+        console.log(`[${timestamp}] LEAD_CREATED_SUCCESS:`, {
+          token_prefix: tokenPrefix,
+          lead_id: leadRecord.id,
+          client_id: leadRecord.client_id,
+          status: leadRecord.status
+        });
+        
+        // NOTE: Lead will be automatically processed by the scheduled lead-processor worker
+        console.log(`[${timestamp}] LEAD_READY_FOR_PROCESSING:`, {
+          lead_id: leadRecord.id,
+          status: leadRecord.status,
+          message: 'Lead created with status "new" - will be processed by scheduled worker within 30 seconds'
+        });
         
         return new Response(JSON.stringify({
           success: true,
           message: 'Lead created successfully',
-          data: createdLead[0] || createdLead
+          data: leadRecord
         }), {
           status: 201,
           headers: {
