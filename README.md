@@ -21,11 +21,12 @@
 - **Build Tool**: Vite
 - **Location**: `/apps/client-ui/`
 
-### Backend (Existing - Verified)
-- **API Gateway**: Cloudflare Worker (`lqs-uat-worker`)
+### Backend (Implemented & Ready for Deployment)
+- **API Gateway**: Cloudflare Worker (`lqs-uat-worker`) - Source code in `/apps/lqs-uat-worker/`
 - **Background Processor**: Scheduled Cloudflare Worker (`lqs-lead-processor`)
 - **Database**: Supabase PostgreSQL
 - **Authentication**: JWT-based with Supabase Auth
+- **Location**: `/apps/lqs-uat-worker/`
 
 ## Data Architecture
 - **User Management**: Supabase `auth.users` table
@@ -34,6 +35,15 @@
 - **Data Flow**: Client creates leads → Background processor qualifies → Status updated
 
 ## Current Features (Completed)
+
+### ✅ Backend API Implementation (NEW)
+- Complete Cloudflare Worker source code implementation
+- JWT authentication middleware for all protected endpoints  
+- Multi-tenant architecture with client_id scoping
+- CRITICAL: GET /api/leads endpoint with proper authentication
+- All existing endpoints: signup, signin, create leads, get lead by ID
+- CORS support for frontend integration
+- Ready for production deployment (requires Cloudflare API key setup)
 
 ### ✅ Authentication System
 - Sign up with email, password, and company name
@@ -71,6 +81,7 @@
 
 ### Lead Management Endpoints  
 - **POST** `/api/leads` - Create new lead
+- **GET** `/api/leads` - Get all leads for authenticated user (NEWLY IMPLEMENTED)
 - **GET** `/api/leads/:id` - Get specific lead details
 
 ## Environment Configuration
@@ -89,7 +100,7 @@ VITE_API_BASE_URL=https://lqs-uat-worker.charlesheflin.workers.dev
 - npm or yarn
 - Git
 
-### Installation & Running
+### Frontend Installation & Running
 ```bash
 # Clone repository
 git clone https://github.com/sygnalz/lqs-monorepo.git
@@ -105,6 +116,23 @@ pm2 start ecosystem.config.cjs
 
 # Build for production
 npm run build
+```
+
+### Backend Worker Development & Testing
+```bash
+# Navigate to worker directory
+cd lqs-monorepo/apps/lqs-uat-worker
+
+# Install dependencies
+npm install
+
+# Start local development server
+npm run dev
+# OR use PM2 for daemon mode
+pm2 start ecosystem.config.cjs
+
+# Deploy to production (requires Cloudflare API key)
+npm run deploy
 ```
 
 ## User Guide
@@ -173,13 +201,14 @@ src/
 - **Last Updated**: September 6, 2025
 
 ## Next Development Steps
-1. **Enhanced Lead Management**: Add lead editing, deletion, and bulk operations
-2. **Advanced Filtering**: Implement search, sort, and filter functionality
-3. **Data Visualization**: Add charts and analytics for lead pipeline
-4. **Real-time Updates**: Implement WebSocket for live status updates
-5. **Export Features**: Add CSV/PDF export capabilities
-6. **User Management**: Company admin features for multi-user organizations
-7. **Production Deployment**: Deploy to Cloudflare Pages or similar platform
+1. **CRITICAL: Production Deployment**: Deploy lqs-uat-worker to production (requires Cloudflare API key configuration)
+2. **Enhanced Lead Management**: Add lead editing, deletion, and bulk operations
+3. **Advanced Filtering**: Implement search, sort, and filter functionality
+4. **Data Visualization**: Add charts and analytics for lead pipeline
+5. **Real-time Updates**: Implement WebSocket for live status updates
+6. **Export Features**: Add CSV/PDF export capabilities
+7. **User Management**: Company admin features for multi-user organizations
+8. **Production Deployment**: Deploy frontend to Cloudflare Pages or similar platform
 
 ## Development Notes
 - All API integrations tested and verified with UAT backend
