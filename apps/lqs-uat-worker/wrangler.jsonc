@@ -1,8 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "lqs-uat-worker",
-  "main": "src/index.ts",
+  "main": "dist/_worker.js",
   "compatibility_date": "2024-01-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": "./dist"
+  "compatibility_flags": ["nodejs_compat"]
 }

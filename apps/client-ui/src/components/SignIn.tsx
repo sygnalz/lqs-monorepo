@@ -37,21 +37,88 @@ const SignIn: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("🔐 [SIGNIN COMPONENT] Form submitted");
+    console.log("🔐 [SIGNIN COMPONENT] Form data:", {
+      email: formData.email,
+      password: formData.password ? '[REDACTED]' : 'undefined',
+      hasPassword: !!formData.password
+    });
+    
     setIsLoading(true)
     setError('')
 
     try {
+      console.log("🔐 [SIGNIN COMPONENT] Calling authService.signIn...");
       const response = await authService.signIn(formData)
+      
+      console.log("🔐 [SIGNIN COMPONENT] Auth service returned successful response");
+      console.log("🔐 [SIGNIN COMPONENT] Response structure:", {
+        hasData: !!response.data,
+        hasSession: !!response.data?.session,
+        hasAccessToken: !!response.data?.session?.access_token,
+        hasUser: !!response.data?.user,
+        hasUserId: !!response.data?.user?.id,
+        hasUserEmail: !!response.data?.user?.email
+      });
+      
       const token = response.data.session.access_token
       const user = {
         id: response.data.user.id,
         email: response.data.user.email
       }
+      
+      console.log("🔐 [SIGNIN COMPONENT] Extracted token and user:", {
+        hasToken: !!token,
+        tokenLength: token ? token.length : 0,
+        userId: user.id,
+        userEmail: user.email
+      });
+      
+      console.log("🔐 [SIGNIN COMPONENT] Calling login function...");
       login(token, user)
+      console.log("🔐 [SIGNIN COMPONENT] Navigating to dashboard...");
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Sign in failed. Please try again.')
+      console.error("🔐 [SIGNIN COMPONENT] Sign-in error occurred:");
+      console.error("🔐 [SIGNIN COMPONENT] Error type:", typeof err);
+      console.error("🔐 [SIGNIN COMPONENT] Error constructor:", err?.constructor?.name);
+      console.error("🔐 [SIGNIN COMPONENT] Full error object:", err);
+      
+      // Enhanced error parsing
+      let errorMessage = 'Sign in failed. Please try again.';
+      
+      if (err?.response) {
+        console.error("🔐 [SIGNIN COMPONENT] Error response:", {
+          status: err.response.status,
+          statusText: err.response.statusText,
+          data: err.response.data,
+          headers: err.response.headers
+        });
+        
+        // Try multiple paths for error message
+        if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data?.error_description) {
+          errorMessage = err.response.data.error_description;
+        } else if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else {
+          errorMessage = `HTTP ${err.response.status}: ${err.response.statusText}`;
+        }
+      } else if (err?.request) {
+        console.error("🔐 [SIGNIN COMPONENT] No response received:", err.request);
+        errorMessage = 'Network error: Unable to connect to server. Please check your internet connection.';
+      } else if (err?.message) {
+        console.error("🔐 [SIGNIN COMPONENT] Error message:", err.message);
+        errorMessage = `Request failed: ${err.message}`;
+      }
+      
+      console.error("🔐 [SIGNIN COMPONENT] Final error message:", errorMessage);
+      setError(errorMessage)
     } finally {
+      console.log("🔐 [SIGNIN COMPONENT] Setting loading to false");
       setIsLoading(false)
     }
   }
