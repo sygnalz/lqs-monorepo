@@ -20,7 +20,8 @@ export default {
         status: 'ok',
         timestamp: new Date().toISOString(),
         environment: 'UAT',
-        message: 'LQS UAT Environment is operational'
+        message: 'LQS UAT Environment is operational',
+        version: '2.0-final-test'
       }), {
         headers: {
           'Content-Type': 'application/json',
@@ -272,13 +273,13 @@ export default {
           });
         }
         
-        // Sign in user using Supabase Auth API with SERVICE_ROLE_KEY
-        const SERVICE_KEY_FOR_AUTH = env.SUPABASE_SERVICE_KEY || env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw';
+        // Sign in user using Supabase Auth API with ANON_KEY
+        const ANON_KEY_FOR_AUTH = env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODg4NzgsImV4cCI6MjA3MjY2NDg3OH0.TCcozM4eY4v21WlFIRHP7ytUqDhDY48bSYFkebuqYwY';
         const supabaseResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SERVICE_KEY_FOR_AUTH
+            'apikey': ANON_KEY_FOR_AUTH
           },
           body: JSON.stringify({
             email,
