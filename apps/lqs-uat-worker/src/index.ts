@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { createClient } from '@supabase/supabase-js'
 import jwt from 'jsonwebtoken'
 
@@ -9,19 +10,13 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// CORS middleware
-app.use('*', async (c, next) => {
-  c.res.headers.set('Access-Control-Allow-Origin', '*')
-  c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  c.res.headers.set('Access-Control-Max-Age', '600')
-  
-  if (c.req.method === 'OPTIONS') {
-    return new Response(null, { status: 200 })
-  }
-  
-  await next()
-})
+// Apply CORS middleware globally at the top
+app.use('*', cors({
+  origin: '*', // Accept requests from any origin
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['POST', 'GET', 'OPTIONS', 'DELETE', 'PUT'],
+  maxAge: 600,
+}))
 
 // Health check endpoint
 app.get('/api/health', (c) => {
