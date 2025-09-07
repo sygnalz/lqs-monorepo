@@ -54,14 +54,13 @@ const SignIn: React.FC = () => {
       console.log("🔐 [SIGNIN COMPONENT] Auth service returned successful response");
       console.log("🔐 [SIGNIN COMPONENT] Response structure:", {
         hasData: !!response.data,
-        hasSession: !!response.data?.session,
-        hasAccessToken: !!response.data?.session?.access_token,
+        hasAccessToken: !!response.data?.access_token,
         hasUser: !!response.data?.user,
         hasUserId: !!response.data?.user?.id,
         hasUserEmail: !!response.data?.user?.email
       });
       
-      const token = response.data.session.access_token
+      const token = response.data.access_token
       const user = {
         id: response.data.user.id,
         email: response.data.user.email
