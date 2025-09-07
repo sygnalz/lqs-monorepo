@@ -57,9 +57,10 @@ async function authenticateJWT(c: any, next: () => Promise<void>) {
 // Sign up endpoint
 app.post('/api/auth/signup', async (c) => {
   try {
-    const { email, password, clientName } = await c.req.json()
+    const { email, password, companyName } = await c.req.json()
     
-    if (!email || !password || !clientName) {
+    if (!email || !password || !companyName) {
+      console.error('Sign-up validation failed: missing required fields', { email: !!email, password: !!password, companyName: !!companyName })
       return c.json({
         success: false,
         message: 'Email, password, and company name are required'
@@ -85,7 +86,7 @@ app.post('/api/auth/signup', async (c) => {
     // Create client record
     const { data: clientData, error: clientError } = await supabase
       .from('clients')
-      .insert([{ name: clientName }])
+      .insert([{ name: companyName }])
       .select()
       .single()
 
