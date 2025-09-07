@@ -1,4 +1,15 @@
 // Simple Worker to handle API endpoints
+
+// Helper function to extract JWT payload
+function getJWTPayload(token) {
+  try {
+    const payloadPart = token.split('.')[1];
+    return JSON.parse(atob(payloadPart));
+  } catch (error) {
+    throw new Error('Invalid JWT token');
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -74,8 +85,8 @@ export default {
 
           createdUserId = supabaseData.id;
           
-          // STEP 2: Create client in clients table
-          const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
+          // STEP 2: Create company in companies table
+          const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${SERVICE_KEY}`,
@@ -101,7 +112,7 @@ export default {
             const clientError = await clientResponse.json();
             return new Response(JSON.stringify({
               success: false,
-              error: 'Failed to create client organization: ' + (clientError.message || 'Unknown error')
+              error: 'Failed to create company organization: ' + (clientError.message || 'Unknown error')
             }), {
               status: 500,
               headers: {
@@ -130,8 +141,8 @@ export default {
           });
 
           if (!profileResponse.ok) {
-            // Rollback: Delete client and user
-            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${createdClientId}`, {
+            // Rollback: Delete company and user
+            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${createdClientId}`, {
               method: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${SERVICE_KEY}`,
@@ -165,13 +176,13 @@ export default {
           // SUCCESS: All three steps completed
           return new Response(JSON.stringify({
             success: true,
-            message: 'User account created successfully with client organization',
+            message: 'User account created successfully with company organization',
             data: {
               user: {
                 id: createdUserId,
                 email: supabaseData.email
               },
-              client: {
+              company: {
                 id: createdClientId,
                 name: Array.isArray(clientData) ? clientData[0].name : clientData.name
               },
@@ -189,7 +200,7 @@ export default {
           // Rollback any created resources on transaction failure
           if (createdClientId) {
             try {
-              await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${createdClientId}`, {
+              await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${createdClientId}`, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${SERVICE_KEY}`,
@@ -197,7 +208,7 @@ export default {
                 }
               });
             } catch (rollbackError) {
-              console.error('Client rollback failed:', rollbackError);
+              console.error('Company rollback failed:', rollbackError);
             }
           }
 
@@ -474,7 +485,7 @@ export default {
         
         // Get request body
         const body = await request.json();
-        const { lead_name, lead_email } = body;
+        const { lead_name, lead_email, phone, custom_data } = body;
         
         if (!lead_name || !lead_email) {
           return new Response(JSON.stringify({
@@ -539,9 +550,11 @@ export default {
         
         // Create lead in database
         const leadData = {
-          client_id: clientId,
+          company_id: clientId,
           lead_name,
           lead_email,
+          phone: phone || null,
+          custom_data: custom_data || null,
           status: 'new'
         };
         
@@ -606,6 +619,132 @@ export default {
           error: 'Invalid request or server error'
         }), {
           status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // Get All Leads endpoint (protected) - List leads for authenticated company
+    if (url.pathname === '/api/leads' && request.method === 'GET') {
+      try {
+        // Extract and validate JWT token
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Authorization token required'
+          }), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const token = authHeader.replace(/^bearer\s+/i, '').trim();
+        
+        // Get user profile to find company_id
+        const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${getJWTPayload(token).sub}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
+            'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!profileResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'User profile not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const profileData = await profileResponse.json();
+        if (!profileData || profileData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'User profile not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const companyId = profileData[0].client_id; // Note: still using client_id in profiles table
+        
+        // Get query parameters for filtering
+        const urlParams = new URLSearchParams(url.search);
+        const status = urlParams.get('status');
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        
+        // Build query with filters
+        let leadsQuery = `company_id=eq.${companyId}`;
+        if (status) {
+          leadsQuery += `&status=eq.${status}`;
+        }
+        
+        // Get leads data with company tenancy check
+        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
+            'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadsResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve leads'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadsData = await leadsResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: leadsData,
+          pagination: {
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            count: leadsData.length
+          }
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Failed to retrieve leads: ' + error.message
+        }), {
+          status: 500,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
@@ -732,8 +871,8 @@ export default {
         
         const clientId = profileData[0].client_id;
         
-        // Get lead data with client tenancy check
-        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&client_id=eq.${clientId}`, {
+        // Get lead data with company tenancy check
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&company_id=eq.${clientId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
