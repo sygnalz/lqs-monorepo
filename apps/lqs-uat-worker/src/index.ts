@@ -103,8 +103,7 @@ app.post('/api/auth/signup', async (c) => {
       .from('profiles')
       .insert([{
         id: authData.user?.id,
-        company_id: companyData.id,
-        email: email
+        company_id: companyData.id
       }])
 
     if (profileError) {
