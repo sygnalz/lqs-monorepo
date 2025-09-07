@@ -47,13 +47,13 @@ export interface SignUpResponse {
       id: string
       email: string
     }
-    client: {
+    company: {
       id: string
       name: string
     }
     profile: {
       id: string
-      client_id: string
+      company_id: string
       updated_at: string
     }
   }

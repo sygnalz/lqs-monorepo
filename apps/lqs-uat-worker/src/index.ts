@@ -83,27 +83,27 @@ app.post('/api/auth/signup', async (c) => {
       }, 400)
     }
 
-    // Create client record
-    const { data: clientData, error: clientError } = await supabase
-      .from('clients')
+    // Create company record
+    const { data: companyData, error: companyError } = await supabase
+      .from('companies')
       .insert([{ name: companyName }])
       .select()
       .single()
 
-    if (clientError) {
-      console.error('Client creation error:', clientError)
+    if (companyError) {
+      console.error('Company creation error:', companyError)
       return c.json({
         success: false,
-        message: 'Failed to create client record'
+        message: 'Failed to create company record'
       }, 500)
     }
 
-    // Create profile linking user to client
+    // Create profile linking user to company
     const { error: profileError } = await supabase
       .from('profiles')
       .insert([{
         id: authData.user?.id,
-        client_id: clientData.id,
+        company_id: companyData.id,
         email: email
       }])
 
@@ -201,10 +201,10 @@ app.post('/api/leads', authenticateJWT, async (c) => {
     // Initialize Supabase client
     const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
 
-    // Get user's client_id from profiles
+    // Get user's company_id from profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -224,7 +224,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
         phone: phone || null,
         source: source || 'web_form',
         status: 'new',
-        client_id: profile.client_id,
+        company_id: profile.company_id,
         created_at: new Date().toISOString()
       }])
       .select()
@@ -262,10 +262,10 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
     // Initialize Supabase client
     const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
 
-    // Get user's client_id from profiles
+    // Get user's company_id from profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -276,12 +276,12 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
       }, 404)
     }
 
-    // Get the lead, ensuring it belongs to the user's client
+    // Get the lead, ensuring it belongs to the user's company
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .select('*')
       .eq('id', leadId)
-      .eq('client_id', profile.client_id)
+      .eq('company_id', profile.company_id)
       .single()
 
     if (leadError || !leadData) {
@@ -313,10 +313,10 @@ app.get('/api/leads', authenticateJWT, async (c) => {
     // Initialize Supabase client
     const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
 
-    // Get user's client_id from profiles
+    // Get user's company_id from profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -327,11 +327,11 @@ app.get('/api/leads', authenticateJWT, async (c) => {
       }, 404)
     }
 
-    // Get all leads for the user's client, ordered by creation date (newest first)
+    // Get all leads for the user's company, ordered by creation date (newest first)
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
       .select('*')
-      .eq('client_id', profile.client_id)
+      .eq('company_id', profile.company_id)
       .order('created_at', { ascending: false })
 
     if (leadsError) {
