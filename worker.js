@@ -334,15 +334,14 @@ export default {
       }
     }
     
-    // Create Lead endpoint (protected)
+    // Create Lead endpoint (protected) - POST /api/leads
     if (url.pathname === '/api/leads' && request.method === 'POST') {
       try {
-        // Extract and validate JWT token (with robust parsing)
+        // 1. Verify Authentication
         const authHeader = request.headers.get('Authorization');
         if (!authHeader) {
           return new Response(JSON.stringify({
-            success: false,
-            error: 'Authorization token required'
+            error: 'Authorization header required'
           }), {
             status: 401,
             headers: {
@@ -352,14 +351,13 @@ export default {
           });
         }
         
-        // Robust token extraction: case-insensitive Bearer, whitespace tolerant
+        // Extract JWT token
         const authHeaderTrimmed = authHeader.trim();
-        const bearerPrefix = /^bearer\s+/i; // Case insensitive Bearer + whitespace
+        const bearerPrefix = /^bearer\s+/i;
         
         if (!bearerPrefix.test(authHeaderTrimmed)) {
           return new Response(JSON.stringify({
-            success: false,
-            error: 'Authorization token required'
+            error: 'Invalid authorization format. Use Bearer <token>'
           }), {
             status: 401,
             headers: {
@@ -369,100 +367,20 @@ export default {
           });
         }
         
-        // Extract token with whitespace tolerance
         const token = authHeaderTrimmed.replace(bearerPrefix, '').trim();
         
-        // INSTRUMENTATION: Log JWT validation details
-        const timestamp = new Date().toISOString();
-        const tokenPrefix = token.substring(0, 20);
-        console.log(`[${timestamp}] JWT_VALIDATION_START:`, {
-          endpoint: '/api/leads',
-          token_prefix: tokenPrefix,
-          token_length: token.length,
-          auth_header_present: !!authHeader
-        });
-        
-        // Decode JWT payload to check expiration (for logging only)
-        let decodedPayload = null;
-        try {
-          const payloadPart = token.split('.')[1];
-          decodedPayload = JSON.parse(atob(payloadPart));
-          const currentTime = Math.floor(Date.now() / 1000);
-          console.log(`[${timestamp}] JWT_PAYLOAD_DECODED:`, {
-            token_prefix: tokenPrefix,
-            issued_at: decodedPayload.iat,
-            expires_at: decodedPayload.exp,
-            current_time: currentTime,
-            is_expired: currentTime > decodedPayload.exp,
-            time_to_expiry: decodedPayload.exp - currentTime,
-            user_id: decodedPayload.sub,
-            email: decodedPayload.email
-          });
-        } catch (decodeError) {
-          console.log(`[${timestamp}] JWT_DECODE_ERROR:`, {
-            token_prefix: tokenPrefix,
-            error: decodeError.message
-          });
-        }
-        
-        // Verify JWT with Supabase
-        const supabaseStartTime = Date.now();
-        console.log(`[${timestamp}] SUPABASE_VALIDATION_REQUEST:`, {
-          token_prefix: tokenPrefix,
-          endpoint: 'https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/user',
-          method: 'GET'
-        });
-        
+        // Validate JWT token with Supabase
         const userResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/user`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`
-          }
-        });
-        
-        const supabaseEndTime = Date.now();
-        console.log(`[${timestamp}] SUPABASE_VALIDATION_RESPONSE:`, {
-          token_prefix: tokenPrefix,
-          status: userResponse.status,
-          status_text: userResponse.statusText,
-          response_time_ms: supabaseEndTime - supabaseStartTime,
-          headers: {
-            content_type: userResponse.headers.get('content-type'),
-            content_length: userResponse.headers.get('content-length')
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwODg4NzgsImV4cCI6MjA3MjY2NDg3OH0.TCcozM4eY4v21WlFIRHP7ytUqDhDY48bSYFkebuqYwY'
           }
         });
         
         if (!userResponse.ok) {
-          // Log the actual error response from Supabase
-          let errorResponseText = '';
-          try {
-            errorResponseText = await userResponse.text();
-            console.log(`[${timestamp}] SUPABASE_ERROR_RESPONSE:`, {
-              token_prefix: tokenPrefix,
-              status: userResponse.status,
-              error_body: errorResponseText
-            });
-          } catch (e) {
-            console.log(`[${timestamp}] SUPABASE_ERROR_READ_FAILED:`, {
-              token_prefix: tokenPrefix,
-              error: e.message
-            });
-          }
-          
           return new Response(JSON.stringify({
-            success: false,
-            error: 'Invalid or expired token',
-            debug_info: {
-              timestamp,
-              token_prefix: tokenPrefix,
-              status: userResponse.status,
-              decoded_payload: decodedPayload ? {
-                exp: decodedPayload.exp,
-                iat: decodedPayload.iat,
-                is_expired: decodedPayload ? (Math.floor(Date.now() / 1000) > decodedPayload.exp) : 'unknown'
-              } : null
-            }
+            error: 'Invalid or expired authentication token'
           }), {
             status: 401,
             headers: {
@@ -475,32 +393,7 @@ export default {
         const userData = await userResponse.json();
         const userId = userData.id;
         
-        // Log successful validation
-        console.log(`[${timestamp}] JWT_VALIDATION_SUCCESS:`, {
-          token_prefix: tokenPrefix,
-          user_id: userId,
-          email: userData.email,
-          validation_time_ms: Date.now() - supabaseStartTime
-        });
-        
-        // Get request body
-        const body = await request.json();
-        const { lead_name, lead_email, phone, custom_data } = body;
-        
-        if (!lead_name || !lead_email) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'lead_name and lead_email are required'
-          }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Look up company_id from profiles table using user_id
+        // 2. Get company_id from user's profile (Security Critical: derive from auth context)
         const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${userId}&select=company_id`, {
           method: 'GET',
           headers: {
@@ -512,8 +405,7 @@ export default {
         
         if (!profileResponse.ok) {
           return new Response(JSON.stringify({
-            success: false,
-            error: 'Failed to lookup client information'
+            error: 'Failed to retrieve user profile'
           }), {
             status: 500,
             headers: {
@@ -527,8 +419,7 @@ export default {
         
         if (!profileData || profileData.length === 0) {
           return new Response(JSON.stringify({
-            success: false,
-            error: 'No client found for this user'
+            error: 'User profile not found'
           }), {
             status: 404,
             headers: {
@@ -538,26 +429,50 @@ export default {
           });
         }
         
-        const clientId = profileData[0].company_id;
+        const companyId = profileData[0].company_id;
         
-        // Log successful profile lookup
-        console.log(`[${timestamp}] PROFILE_LOOKUP_SUCCESS:`, {
-          token_prefix: tokenPrefix,
-          user_id: userId,
-          company_id: clientId,
-          profile_data: profileData[0]
-        });
+        // 3. Parse and validate request body
+        const body = await request.json();
+        const { name, email, phone, notes } = body;
         
-        // Create lead in database
+        // 4. Validate required fields
+        if (!name || !email) {
+          return new Response(JSON.stringify({
+            error: 'Name and email are required fields'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return new Response(JSON.stringify({
+            error: 'Invalid email format'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // 5. Construct lead data for database insertion
         const leadData = {
-          company_id: clientId,
-          lead_name,
-          lead_email,
+          company_id: companyId,
+          name: name,
+          email: email,
           phone: phone || null,
-          custom_data: custom_data || null,
-          status: 'new'
+          notes: notes || null
+          // status defaults to 'new' in database, created_at auto-generated
         };
         
+        // 6. Execute SQL INSERT to create new lead
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads`, {
           method: 'POST',
           headers: {
@@ -569,10 +484,10 @@ export default {
           body: JSON.stringify(leadData)
         });
         
+        // 7. Handle database errors
         if (!leadResponse.ok) {
           const errorData = await leadResponse.json();
           return new Response(JSON.stringify({
-            success: false,
             error: errorData.message || 'Failed to create lead'
           }), {
             status: 500,
@@ -583,29 +498,11 @@ export default {
           });
         }
         
+        // 8. Return successful response with created lead data
         const createdLead = await leadResponse.json();
         const leadRecord = createdLead[0] || createdLead;
         
-        // Log successful lead creation
-        console.log(`[${timestamp}] LEAD_CREATED_SUCCESS:`, {
-          token_prefix: tokenPrefix,
-          lead_id: leadRecord.id,
-          company_id: leadRecord.company_id,
-          status: leadRecord.status
-        });
-        
-        // NOTE: Lead will be automatically processed by the scheduled lead-processor worker
-        console.log(`[${timestamp}] LEAD_READY_FOR_PROCESSING:`, {
-          lead_id: leadRecord.id,
-          status: leadRecord.status,
-          message: 'Lead created with status "new" - will be processed by scheduled worker within 30 seconds'
-        });
-        
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'Lead created successfully',
-          data: leadRecord
-        }), {
+        return new Response(JSON.stringify(leadRecord), {
           status: 201,
           headers: {
             'Content-Type': 'application/json',
@@ -614,9 +511,9 @@ export default {
         });
         
       } catch (error) {
+        // Handle JSON parsing errors and other exceptions
         return new Response(JSON.stringify({
-          success: false,
-          error: 'Invalid request or server error'
+          error: 'Invalid JSON in request body or server error'
         }), {
           status: 400,
           headers: {
