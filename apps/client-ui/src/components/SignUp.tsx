@@ -57,6 +57,7 @@ const SignUp: React.FC = () => {
     try {
       // Remove confirmPassword from the data sent to API
       const { confirmPassword, ...signUpData } = formData
+      console.log("SENDING SIGNUP PAYLOAD:", JSON.stringify(signUpData, null, 2))
       await authService.signUp(signUpData)
       
       // Signup successful - redirect to signin with success message
