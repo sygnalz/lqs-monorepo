@@ -125,7 +125,7 @@ export default {
           const clientData = await clientResponse.json();
           createdClientId = Array.isArray(clientData) ? clientData[0].id : clientData.id;
 
-          // STEP 3: Create profile link (user_id -> client_id mapping)
+          // STEP 3: Create profile link (user_id -> company_id mapping)
           const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles`, {
             method: 'POST',
             headers: {
@@ -136,7 +136,7 @@ export default {
             },
             body: JSON.stringify({
               id: createdUserId,
-              client_id: createdClientId
+              company_id: createdClientId
             })
           });
 
@@ -500,8 +500,8 @@ export default {
           });
         }
         
-        // Look up client_id from profiles table using user_id
-        const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${userId}&select=client_id`, {
+        // Look up company_id from profiles table using user_id
+        const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${userId}&select=company_id`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
@@ -538,13 +538,13 @@ export default {
           });
         }
         
-        const clientId = profileData[0].client_id;
+        const clientId = profileData[0].company_id;
         
         // Log successful profile lookup
         console.log(`[${timestamp}] PROFILE_LOOKUP_SUCCESS:`, {
           token_prefix: tokenPrefix,
           user_id: userId,
-          client_id: clientId,
+          company_id: clientId,
           profile_data: profileData[0]
         });
         
@@ -590,7 +590,7 @@ export default {
         console.log(`[${timestamp}] LEAD_CREATED_SUCCESS:`, {
           token_prefix: tokenPrefix,
           lead_id: leadRecord.id,
-          client_id: leadRecord.client_id,
+          company_id: leadRecord.company_id,
           status: leadRecord.status
         });
         
@@ -684,7 +684,7 @@ export default {
           });
         }
         
-        const companyId = profileData[0].client_id; // Note: still using client_id in profiles table
+        const companyId = profileData[0].company_id; // Updated to use company_id
         
         // Get query parameters for filtering
         const urlParams = new URLSearchParams(url.search);
@@ -831,8 +831,8 @@ export default {
         const userData = await userResponse.json();
         const userId = userData.id;
         
-        // Look up client_id from profiles table using user_id
-        const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${userId}&select=client_id`, {
+        // Look up company_id from profiles table using user_id
+        const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${userId}&select=company_id`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`,
@@ -869,7 +869,7 @@ export default {
           });
         }
         
-        const clientId = profileData[0].client_id;
+        const clientId = profileData[0].company_id;
         
         // Get lead data with company tenancy check
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&company_id=eq.${clientId}`, {
