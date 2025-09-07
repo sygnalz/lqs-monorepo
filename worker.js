@@ -33,12 +33,12 @@ export default {
     if (url.pathname === '/api/auth/signup' && request.method === 'POST') {
       try {
         const body = await request.json();
-        const { email, password, client_name } = body;
+        const { email, password, companyName, client_name } = body;
         
-        if (!email || !password) {
+        if (!email || !password || !companyName) {
           return new Response(JSON.stringify({
             success: false,
-            error: 'Email and password are required'
+            error: 'Email, password, and company name are required'
           }), {
             status: 400,
             headers: {
@@ -48,7 +48,8 @@ export default {
           });
         }
 
-        const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw';
+        // Use SERVICE_ROLE_KEY from environment, fallback to hardcoded for backward compatibility
+        const SERVICE_KEY = env.SUPABASE_SERVICE_KEY || env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw';
         let createdUserId = null;
         let createdClientId = null;
 
@@ -95,7 +96,7 @@ export default {
               'Prefer': 'return=representation'
             },
             body: JSON.stringify({
-              name: client_name || `${email.split('@')[0]}'s Organization`
+              name: companyName || client_name || `${email.split('@')[0]}'s Organization`
             })
           });
 
@@ -271,12 +272,13 @@ export default {
           });
         }
         
-        // Sign in user using Supabase Auth API
+        // Sign in user using Supabase Auth API with SERVICE_ROLE_KEY
+        const SERVICE_KEY_FOR_AUTH = env.SUPABASE_SERVICE_KEY || env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw';
         const supabaseResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZWJzY2NndG1udGxqZHJ6d2V0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA4ODg3OCwiZXhwIjoyMDcyNjY0ODc4fQ.PaljHYSMCIjjqgTtInOszP0jF1sTFkixowNFQfN--tw`
+            'apikey': SERVICE_KEY_FOR_AUTH
           },
           body: JSON.stringify({
             email,

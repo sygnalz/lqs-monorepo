@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken'
 type Bindings = {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
+  SUPABASE_SERVICE_KEY?: string
+  SUPABASE_SERVICE_ROLE_KEY?: string
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -75,7 +77,9 @@ app.post('/api/auth/signup', async (c) => {
       }, 400)
     }
 
-    const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
 
     // Step 1: Create user account
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -195,7 +199,9 @@ app.post('/api/auth/signin', async (c) => {
       }, 400)
     }
 
-    const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
 
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -242,7 +248,9 @@ app.post('/api/leads', authenticateJWT, async (c) => {
       }, 400)
     }
 
-    const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -297,7 +305,9 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
     const leadId = c.req.param('id')
     const user = c.get('user')
 
-    const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -344,7 +354,9 @@ app.get('/api/leads', authenticateJWT, async (c) => {
   try {
     const user = c.get('user')
 
-    const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
