@@ -51,20 +51,33 @@ async function authenticateJWT(c: any, next: () => Promise<void>) {
   }
 }
 
-// Sign up endpoint
+// Sign up endpoint - FIXED VERSION
 app.post('/api/auth/signup', async (c) => {
   try {
-    const { email, password, companyName } = await c.req.json()
+    const requestBody = await c.req.json()
+    const { email, password, companyName } = requestBody
     
+    // Enhanced validation with debugging info
     if (!email || !password || !companyName) {
       return c.json({
         success: false,
-        message: 'Email, password, and company name are required'
+        message: 'Email, password, and company name are required',
+        debug: { receivedBody: requestBody }
+      }, 400)
+    }
+
+    // Validate companyName is a non-empty string
+    if (typeof companyName !== 'string' || companyName.trim().length === 0) {
+      return c.json({
+        success: false,
+        message: 'Company name must be a valid non-empty string',
+        debug: { companyName: companyName, type: typeof companyName }
       }, 400)
     }
 
     const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY)
 
+    // Step 1: Create user account
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password
@@ -73,34 +86,75 @@ app.post('/api/auth/signup', async (c) => {
     if (authError) {
       return c.json({
         success: false,
-        message: authError.message
+        message: authError.message,
+        debug: { step: 'auth_signup', error: authError }
       }, 400)
+    }
+
+    if (!authData.user) {
+      return c.json({
+        success: false,
+        message: 'User creation failed - no user data returned'
+      }, 500)
+    }
+
+    // Step 2: Create company record with explicit name field
+    const companyPayload = { 
+      name: companyName.trim(),
+      // Explicitly set created_at to prevent any auto-naming
+      created_at: new Date().toISOString()
     }
 
     const { data: companyData, error: companyError } = await supabase
       .from('companies')
-      .insert([{ name: companyName }])
-      .select()
+      .insert([companyPayload])
+      .select('id, name, created_at')
       .single()
 
     if (companyError) {
       return c.json({
         success: false,
-        message: 'Failed to create company record'
+        message: 'Failed to create company record',
+        debug: { 
+          step: 'company_creation', 
+          error: companyError,
+          payload: companyPayload
+        }
       }, 500)
+    }
+
+    // Verify company was created with correct name
+    if (!companyData || companyData.name !== companyName.trim()) {
+      return c.json({
+        success: false,
+        message: 'Company created but name was modified by database',
+        debug: {
+          expected: companyName.trim(),
+          actual: companyData?.name,
+          companyData: companyData
+        }
+      }, 500)
+    }
+
+    // Step 3: Create user profile linking to company
+    const profilePayload = {
+      id: authData.user.id,
+      company_id: companyData.id
     }
 
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert([{
-        id: authData.user?.id,
-        company_id: companyData.id
-      }])
+      .insert([profilePayload])
 
     if (profileError) {
       return c.json({
         success: false,
-        message: 'Failed to create user profile'
+        message: 'Failed to create user profile',
+        debug: { 
+          step: 'profile_creation', 
+          error: profileError,
+          payload: profilePayload
+        }
       }, 500)
     }
 
@@ -109,8 +163,12 @@ app.post('/api/auth/signup', async (c) => {
       message: 'User registered successfully',
       data: {
         user: {
-          id: authData.user?.id,
-          email: authData.user?.email
+          id: authData.user.id,
+          email: authData.user.email
+        },
+        company: {
+          id: companyData.id,
+          name: companyData.name
         },
         session: authData.session
       }
@@ -119,7 +177,8 @@ app.post('/api/auth/signup', async (c) => {
   } catch (error) {
     return c.json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      debug: { error: error instanceof Error ? error.message : String(error) }
     }, 500)
   }
 })
@@ -170,7 +229,7 @@ app.post('/api/auth/signin', async (c) => {
   }
 })
 
-// Create lead endpoint
+// Create lead endpoint - FIXED VERSION
 app.post('/api/leads', authenticateJWT, async (c) => {
   try {
     const { name, email, phone, source } = await c.req.json()
@@ -200,7 +259,14 @@ app.post('/api/leads', authenticateJWT, async (c) => {
 
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
-      .insert([{}]) // Empty insert to work with actual schema
+      .insert([{
+        company_id: profile.company_id,
+        name: name,
+        email: email,
+        phone: phone || null,
+        source: source || 'API',
+        notes: null
+      }])
       .select()
       .single()
 
