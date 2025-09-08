@@ -1247,8 +1247,8 @@ export default {
           });
         }
         
-        // Security Check: Verify that the lead belongs to a client that is part of the authenticated user's company
-        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id,clients!inner(id,company_id)`, {
+        // Security Check: First verify that the lead exists
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1260,7 +1260,7 @@ export default {
         if (!leadResponse.ok) {
           return new Response(JSON.stringify({
             success: false,
-            error: 'Failed to verify lead ownership'
+            error: 'Failed to verify lead existence'
           }), {
             status: 500,
             headers: {
@@ -1272,7 +1272,7 @@ export default {
         
         const leadData = await leadResponse.json();
         
-        // Check if lead exists and belongs to user's company
+        // Check if lead exists
         if (!leadData || leadData.length === 0) {
           return new Response(JSON.stringify({
             success: false,
@@ -1286,8 +1286,34 @@ export default {
           });
         }
         
+        // Now verify that the client belongs to the user's company
+        const clientId = leadData[0].client_id;
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
         // Verify company ownership through the client relationship
-        if (leadData[0].clients.company_id !== companyId) {
+        if (!clientData || clientData.length === 0) {
           return new Response(JSON.stringify({
             success: false,
             error: 'Access denied: Lead does not belong to your company'
