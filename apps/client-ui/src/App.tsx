@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard'
 import NewLead from './components/NewLead'
 import LeadDetail from './components/LeadDetail'
 import CreateClient from './components/CreateClient'
+import ClientDetailPage from './pages/ClientDetailPage'
 
 function App() {
   return (
@@ -45,6 +46,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreateClient />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/clients/:id" 
+            element={
+              <ProtectedRoute>
+                <ClientDetailPage />
               </ProtectedRoute>
             } 
           />
