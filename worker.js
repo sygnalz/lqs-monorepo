@@ -362,7 +362,7 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': env.SUPABASE_ANON_KEY
+            'apikey': env.SUPABASE_KEY || env.SUPABASE_ANON_KEY
           },
           body: JSON.stringify({
             email,
