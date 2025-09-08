@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
-import { Lead } from '../types/lead';
+import { Client } from '../types/client';
 import axios from 'axios';
 
 const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
@@ -11,8 +11,8 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
-  // State management for leads functionality
-  const [leads, setLeads] = useState<Lead[]>([]);
+  // State management for clients functionality
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,10 +21,10 @@ const Dashboard: React.FC = () => {
     navigate('/signin');
   };
 
-  // Fetch leads when component mounts
+  // Fetch clients when component mounts
   useEffect(() => {
-    const fetchLeads = async () => {
-      console.log("📋 [DASHBOARD] Starting to fetch leads...");
+    const fetchClients = async () => {
+      console.log("📋 [DASHBOARD] Starting to fetch clients...");
       setIsLoading(true);
       setError(null);
 
@@ -40,49 +40,49 @@ const Dashboard: React.FC = () => {
           throw new Error('No authentication token found. Please sign in again.');
         }
 
-        console.log("📋 [DASHBOARD] Making GET request to /api/leads");
-        console.log("📋 [DASHBOARD] Request URL:", `${API_URL}/leads`);
+        console.log("📋 [DASHBOARD] Making GET request to /api/clients");
+        console.log("📋 [DASHBOARD] Request URL:", `${API_URL}/clients`);
         
-        // Make authenticated GET request to /api/leads
-        const response = await axios.get(`${API_URL}/leads`, {
+        // Make authenticated GET request to /api/clients
+        const response = await axios.get(`${API_URL}/clients`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
-        console.log("📋 [DASHBOARD] Leads fetch successful!");
+        console.log("📋 [DASHBOARD] Clients fetch successful!");
         console.log("📋 [DASHBOARD] Response status:", response.status);
         console.log("📋 [DASHBOARD] Full response data:", response.data);
 
-        // [CRITICAL LEARNING LQS-P2-LRN-001] Handle nested data structure
-        let leadsArray: Lead[] = [];
+        // Handle nested data structure (response.data.data)
+        let clientsArray: Client[] = [];
         
         // Check for nested data structure
         if (response.data && response.data.data && Array.isArray(response.data.data)) {
           console.log("📋 [DASHBOARD] Found nested data structure (response.data.data)");
-          leadsArray = response.data.data;
+          clientsArray = response.data.data;
         } else if (response.data && Array.isArray(response.data)) {
           console.log("📋 [DASHBOARD] Found direct array structure (response.data)");
-          leadsArray = response.data;
+          clientsArray = response.data;
         } else {
           console.warn("📋 [DASHBOARD] Unexpected response structure:", response.data);
-          leadsArray = [];
+          clientsArray = [];
         }
 
-        console.log("📋 [DASHBOARD] Parsed leads array:", {
-          leadsCount: leadsArray.length,
-          firstLead: leadsArray.length > 0 ? leadsArray[0] : null
+        console.log("📋 [DASHBOARD] Parsed clients array:", {
+          clientsCount: clientsArray.length,
+          firstClient: clientsArray.length > 0 ? clientsArray[0] : null
         });
 
-        setLeads(leadsArray);
+        setClients(clientsArray);
       } catch (err: any) {
-        console.error("📋 [DASHBOARD] Failed to fetch leads:");
+        console.error("📋 [DASHBOARD] Failed to fetch clients:");
         console.error("📋 [DASHBOARD] Error type:", typeof err);
         console.error("📋 [DASHBOARD] Error constructor:", err?.constructor?.name);
         console.error("📋 [DASHBOARD] Full error object:", err);
 
-        let errorMessage = 'Failed to fetch leads. Please try again.';
+        let errorMessage = 'Failed to fetch clients. Please try again.';
 
         if (err?.response) {
           console.error("📋 [DASHBOARD] Error response:", {
@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
 
           if (err.response.status === 401) {
             errorMessage = 'Authentication failed. Please sign in again.';
-            // Optionally redirect to login
+            // Redirect to login on authentication failure
             logout();
             navigate('/signin');
             return;
@@ -120,7 +120,7 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    fetchLeads();
+    fetchClients();
   }, [logout, navigate]);
 
   // Format date for display
@@ -168,23 +168,24 @@ const Dashboard: React.FC = () => {
           <div className="px-4 py-6 sm:px-0">
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-900">Lead Management</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Client Management</h1>
                 <button 
-                  onClick={() => navigate('/leads/new')}
+                  onClick={() => navigate('/clients/new')}
                   className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                 >
-                  Add New Lead
+                  Add New Client
                 </button>
               </div>
 
-              {/* Conditional Rendering based on state */}
+              {/* Loading State */}
               {isLoading && (
                 <div className="flex justify-center items-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  <p className="ml-3 text-gray-600">Loading leads...</p>
+                  <p className="ml-3 text-gray-600">Loading clients...</p>
                 </div>
               )}
 
+              {/* Error State */}
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                   <strong className="font-bold">Error:</strong>
@@ -198,47 +199,46 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {!isLoading && !error && leads.length === 0 && (
+              {/* Empty State */}
+              {!isLoading && !error && clients.length === 0 && (
                 <div className="text-center py-8">
                   <div className="mx-auto h-12 w-12 text-gray-400">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No leads found</h3>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No clients found</h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    You haven't created any leads yet. Get started by adding your first lead!
+                    No clients found. Click here to create your first client.
                   </p>
                   <div className="mt-6">
                     <button
-                      onClick={() => navigate('/leads/new')}
+                      onClick={() => navigate('/clients/new')}
                       className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                     >
                       <svg className="-ml-1 mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                       </svg>
-                      Add New Lead
+                      Add New Client
                     </button>
                   </div>
                 </div>
               )}
 
-              {!isLoading && !error && leads.length > 0 && (
+              {/* Data State - Client Table */}
+              {!isLoading && !error && clients.length > 0 && (
                 <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
+                          Client Name
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Primary Contact
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Email
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phone
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Date Created
@@ -249,32 +249,28 @@ const Dashboard: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {leads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-gray-50">
+                      {clients.map((client) => (
+                        <tr key={client.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {lead.name}
+                            <a 
+                              href={`/clients/${client.id}`}
+                              className="text-indigo-600 hover:text-indigo-900 hover:underline"
+                            >
+                              {client.name}
+                            </a>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead.email}
+                            {client.primary_contact_name || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead.phone || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              lead.status === 'active' ? 'bg-green-100 text-green-800' :
-                              lead.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {lead.status}
-                            </span>
+                            {client.primary_contact_email || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(lead.created_at)}
+                            {formatDate(client.created_at)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
-                              onClick={() => navigate(`/leads/${lead.id}`)}
+                              onClick={() => navigate(`/clients/${client.id}`)}
                               className="text-indigo-600 hover:text-indigo-900"
                             >
                               View Details
@@ -287,10 +283,10 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
 
-              {!isLoading && !error && leads.length > 0 && (
+              {!isLoading && !error && clients.length > 0 && (
                 <div className="mt-6 flex justify-between items-center">
                   <div className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{leads.length}</span> lead{leads.length !== 1 ? 's' : ''}
+                    Showing <span className="font-medium">{clients.length}</span> client{clients.length !== 1 ? 's' : ''}
                   </div>
                   <button
                     onClick={() => window.location.reload()}
