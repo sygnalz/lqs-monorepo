@@ -8,6 +8,7 @@ import NewLead from './components/NewLead'
 import LeadDetail from './components/LeadDetail'
 import CreateClient from './components/CreateClient'
 import ClientDetailPage from './pages/ClientDetailPage'
+import CreateLeadPage from './pages/CreateLeadPage'
 
 function App() {
   return (
@@ -46,6 +47,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreateClient />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/clients/:clientId/leads/new" 
+            element={
+              <ProtectedRoute>
+                <CreateLeadPage />
               </ProtectedRoute>
             } 
           />
