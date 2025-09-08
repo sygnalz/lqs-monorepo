@@ -1086,8 +1086,8 @@ export default {
           leadsQuery += `&status=eq.${status}`;
         }
         
-        // Get leads data for the specific client
-        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+        // Get leads data for the specific client with associated tags
+        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&select=*, lead_tags ( tags ( * ) )&limit=${limit}&offset=${offset}&order=created_at.desc`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1109,7 +1109,21 @@ export default {
           });
         }
         
-        const leadsData = await leadsResponse.json();
+        const rawLeadsData = await leadsResponse.json();
+        
+        // Transform the nested lead_tags structure into a flat tags array for each lead
+        const leadsData = rawLeadsData.map(lead => {
+          // Extract tags from the nested lead_tags structure
+          const tags = lead.lead_tags ? lead.lead_tags.map(leadTag => leadTag.tags).filter(tag => tag !== null) : [];
+          
+          // Remove the lead_tags property and add the flattened tags array
+          const { lead_tags, ...leadWithoutJoinTable } = lead;
+          
+          return {
+            ...leadWithoutJoinTable,
+            tags: tags
+          };
+        });
         
         return new Response(JSON.stringify({
           success: true,
