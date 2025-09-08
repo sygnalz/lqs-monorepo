@@ -438,279 +438,6 @@ export default {
       }
     }
     
-    // Create Lead endpoint (protected) - POST /api/leads
-    if (url.pathname === '/api/leads' && request.method === 'POST') {
-      try {
-        // Use centralized authentication
-        const authResult = await getAuthenticatedProfile(request, env);
-        if (authResult.error) {
-          return authResult.error;
-        }
-        
-        const { profile } = authResult;
-        const companyId = profile.company_id;
-        
-        // Parse and validate request body
-        const body = await request.json();
-        const { name, email, phone, notes } = body;
-        
-        // Validate required fields
-        if (!name || !email) {
-          return new Response(JSON.stringify({
-            error: 'Name and email are required fields'
-          }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return new Response(JSON.stringify({
-            error: 'Invalid email format'
-          }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Construct lead data for database insertion
-        const leadData = {
-          company_id: companyId,
-          name: name,
-          email: email,
-          phone: phone || null,
-          notes: notes || null
-        };
-        
-        // Execute SQL INSERT to create new lead
-        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify(leadData)
-        });
-        
-        // Handle database errors
-        if (!leadResponse.ok) {
-          const errorData = await leadResponse.json();
-          return new Response(JSON.stringify({
-            error: errorData.message || 'Failed to create lead'
-          }), {
-            status: 500,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Return successful response with created lead data
-        const createdLead = await leadResponse.json();
-        const leadRecord = createdLead[0] || createdLead;
-        
-        return new Response(JSON.stringify(leadRecord), {
-          status: 201,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-        
-      } catch (error) {
-        // Handle JSON parsing errors and other exceptions
-        return new Response(JSON.stringify({
-          error: 'Invalid JSON in request body or server error'
-        }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-      }
-    }
-    
-    // Get All Leads endpoint (protected) - List leads for authenticated company
-    if (url.pathname === '/api/leads' && request.method === 'GET') {
-      try {
-        // Use centralized authentication
-        const authResult = await getAuthenticatedProfile(request, env);
-        if (authResult.error) {
-          return authResult.error;
-        }
-        
-        const { profile } = authResult;
-        const companyId = profile.company_id;
-        
-        // Get query parameters for filtering
-        const urlParams = new URLSearchParams(url.search);
-        const status = urlParams.get('status');
-        const limit = urlParams.get('limit') || '50';
-        const offset = urlParams.get('offset') || '0';
-        
-        // Build query with filters
-        let leadsQuery = `company_id=eq.${companyId}`;
-        if (status) {
-          leadsQuery += `&status=eq.${status}`;
-        }
-        
-        // Get leads data with company tenancy check
-        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!leadsResponse.ok) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Failed to retrieve leads'
-          }), {
-            status: 500,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        const leadsData = await leadsResponse.json();
-        
-        return new Response(JSON.stringify({
-          success: true,
-          data: leadsData,
-          pagination: {
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            count: leadsData.length
-          }
-        }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-        
-      } catch (error) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Failed to retrieve leads: ' + error.message
-        }), {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-      }
-    }
-    
-    // Get Lead endpoint (protected)
-    if (url.pathname.startsWith('/api/leads/') && request.method === 'GET') {
-      try {
-        // Extract lead ID from path
-        const leadId = url.pathname.split('/api/leads/')[1];
-        if (!leadId) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Lead ID is required'
-          }), {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Use centralized authentication
-        const authResult = await getAuthenticatedProfile(request, env);
-        if (authResult.error) {
-          return authResult.error;
-        }
-        
-        const { profile } = authResult;
-        const companyId = profile.company_id;
-        
-        // Get lead data with company tenancy check
-        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&company_id=eq.${companyId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!leadResponse.ok) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Failed to retrieve lead'
-          }), {
-            status: 500,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        const leadData = await leadResponse.json();
-        
-        if (!leadData || leadData.length === 0) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Lead not found'
-          }), {
-            status: 404,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        return new Response(JSON.stringify({
-          success: true,
-          data: leadData[0]
-        }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-        
-      } catch (error) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Invalid request or server error'
-        }), {
-          status: 400,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-      }
-    }
-    
     // POST /api/clients endpoint (protected) - Create new client
     if (url.pathname === '/api/clients' && request.method === 'POST') {
       try {
@@ -896,7 +623,7 @@ export default {
     }
     
     // GET /api/clients/:id endpoint (protected) - Retrieve single client by ID
-    if (url.pathname.startsWith('/api/clients/') && request.method === 'GET') {
+    if (url.pathname.startsWith('/api/clients/') && url.pathname.split('/').length === 4 && request.method === 'GET') {
       try {
         // Extract client ID from path
         const clientId = url.pathname.split('/api/clients/')[1];
@@ -989,7 +716,7 @@ export default {
     }
     
     // PATCH /api/clients/:id endpoint (protected) - Update client billing information
-    if (url.pathname.startsWith('/api/clients/') && request.method === 'PATCH') {
+    if (url.pathname.startsWith('/api/clients/') && url.pathname.split('/').length === 4 && request.method === 'PATCH') {
       try {
         // Extract client ID from path
         const clientId = url.pathname.split('/api/clients/')[1];
@@ -1102,6 +829,311 @@ export default {
           error: 'Invalid request or server error: ' + error.message
         }), {
           status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/clients/:clientId/leads endpoint (protected) - Create new lead for specific client
+    if (url.pathname.match(/^\/api\/clients\/[^\/]+\/leads$/) && request.method === 'POST') {
+      try {
+        // Extract client ID from path
+        const pathParts = url.pathname.split('/');
+        const clientId = pathParts[3]; // /api/clients/{clientId}/leads
+        
+        if (!clientId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Security Check: Verify that the client belongs to the authenticated user's company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
+        // If no client found, return 404 Not Found
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Parse and validate request body
+        const body = await request.json();
+        const { name, email, phone, status, notes } = body;
+        
+        // Validate required fields
+        if (!name || !email) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Name and email are required fields'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid email format'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Construct lead data for database insertion with client_id
+        const leadData = {
+          client_id: clientId,
+          name: name,
+          email: email,
+          phone: phone || null,
+          status: status || 'new',
+          notes: notes || null
+        };
+        
+        // Execute SQL INSERT to create new lead
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(leadData)
+        });
+        
+        // Handle database errors
+        if (!leadResponse.ok) {
+          const errorData = await leadResponse.json();
+          return new Response(JSON.stringify({
+            success: false,
+            error: errorData.message || 'Failed to create lead'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return successful response with created lead data
+        const createdLead = await leadResponse.json();
+        const leadRecord = createdLead[0] || createdLead;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: leadRecord,
+          message: 'Lead created successfully'
+        }), {
+          status: 201,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        // Handle JSON parsing errors and other exceptions
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // GET /api/clients/:clientId/leads endpoint (protected) - List all leads for specific client
+    if (url.pathname.match(/^\/api\/clients\/[^\/]+\/leads$/) && request.method === 'GET') {
+      try {
+        // Extract client ID from path
+        const pathParts = url.pathname.split('/');
+        const clientId = pathParts[3]; // /api/clients/{clientId}/leads
+        
+        if (!clientId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Security Check: Verify that the client belongs to the authenticated user's company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
+        // If no client found, return 404 Not Found
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Get query parameters for filtering
+        const urlParams = new URLSearchParams(url.search);
+        const status = urlParams.get('status');
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        
+        // Build query with client_id filter and optional status filter
+        let leadsQuery = `client_id=eq.${clientId}`;
+        if (status) {
+          leadsQuery += `&status=eq.${status}`;
+        }
+        
+        // Get leads data for the specific client
+        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadsResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve leads'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadsData = await leadsResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: leadsData,
+          client: clientData[0], // Include client information for context
+          pagination: {
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            count: leadsData.length
+          }
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 500,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
