@@ -116,6 +116,23 @@ export default {
       });
     }
     
+    // Debug endpoint to check environment variables
+    if (url.pathname === '/api/debug/env' && request.method === 'GET') {
+      return new Response(JSON.stringify({
+        available_vars: {
+          SUPABASE_SERVICE_KEY: !!env.SUPABASE_SERVICE_KEY,
+          SUPABASE_ANON_KEY: !!env.SUPABASE_ANON_KEY,
+          SUPABASE_KEY: !!env.SUPABASE_KEY,
+          ENVIRONMENT: env.ENVIRONMENT
+        }
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+    
     // Auth signup endpoint - COMPLETE IMPLEMENTATION
     if (url.pathname === '/api/auth/signup' && request.method === 'POST') {
       try {
@@ -362,7 +379,7 @@ export default {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': env.SUPABASE_KEY || env.SUPABASE_ANON_KEY
+            'apikey': env.SUPABASE_ANON_KEY
           },
           body: JSON.stringify({
             email,
