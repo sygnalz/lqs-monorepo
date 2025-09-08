@@ -7,9 +7,10 @@ async function testClientsEndpoints() {
   
   try {
     // Step 1: Create a test user and get JWT token
+    const timestamp = Date.now();
     const signupData = {
       companyName: 'Client Test Company',
-      email: 'clients.test@example.com',
+      email: `clients.test.${timestamp}@example.com`,
       password: 'password123'
     };
 
@@ -19,7 +20,7 @@ async function testClientsEndpoints() {
 
     // Step 2: Sign in to get JWT token
     const signinData = {
-      email: 'clients.test@example.com',
+      email: `clients.test.${timestamp}@example.com`,
       password: 'password123'
     };
 

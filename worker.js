@@ -289,8 +289,8 @@ export default {
               await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${createdClientId}`, {
                 method: 'DELETE',
                 headers: {
-                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                  'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  'apikey': env.SUPABASE_SERVICE_KEY
                 }
               });
             } catch (rollbackError) {
@@ -303,8 +303,8 @@ export default {
               await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
                 method: 'DELETE',
                 headers: {
-                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                  'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                  'apikey': env.SUPABASE_SERVICE_KEY
                 }
               });
             } catch (rollbackError) {
