@@ -1142,6 +1142,276 @@ export default {
       }
     }
     
+    // GET /api/tags endpoint (protected) - Retrieve all tags ordered by step_id then id
+    if (url.pathname === '/api/tags' && request.method === 'GET') {
+      try {
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        // Fetch all tags from the tags table ordered by step_id, then by id
+        const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/tags?select=*&order=step_id.asc,id.asc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!tagsResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve tags'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tagsData = await tagsResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: tagsData
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/leads/:leadId/tags endpoint (protected) - Apply tags to leads
+    if (url.pathname.match(/^\/api\/leads\/[^\/]+\/tags$/) && request.method === 'POST') {
+      try {
+        // Extract lead ID from path
+        const pathParts = url.pathname.split('/');
+        const leadId = pathParts[3]; // /api/leads/{leadId}/tags
+        
+        if (!leadId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Parse request body to get tag_id
+        const body = await request.json();
+        const { tag_id } = body;
+        
+        if (!tag_id) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'tag_id is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Security Check: Verify that the lead belongs to a client that is part of the authenticated user's company
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id,clients!inner(id,company_id)`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify lead ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadData = await leadResponse.json();
+        
+        // Check if lead exists and belongs to user's company
+        if (!leadData || leadData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Verify company ownership through the client relationship
+        if (leadData[0].clients.company_id !== companyId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Access denied: Lead does not belong to your company'
+          }), {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Verify that the tag exists
+        const tagResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/tags?id=eq.${tag_id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!tagResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify tag'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tagData = await tagResponse.json();
+        
+        if (!tagData || tagData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Tag not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Insert lead-tag relationship into lead_tags table
+        const leadTagData = {
+          lead_id: leadId,
+          tag_id: tag_id
+        };
+        
+        const insertResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/lead_tags`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(leadTagData)
+        });
+        
+        if (!insertResponse.ok) {
+          const errorData = await insertResponse.json();
+          
+          // Handle duplicate key constraint violation (409 Conflict)
+          if (errorData.code === '23505' || errorData.message?.includes('duplicate') || errorData.message?.includes('unique constraint')) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Tag already applied to this lead'
+            }), {
+              status: 409,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+          
+          return new Response(JSON.stringify({
+            success: false,
+            error: errorData.message || 'Failed to apply tag to lead'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const createdLeadTag = await insertResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: createdLeadTag[0] || createdLeadTag,
+          message: 'Tag applied to lead successfully'
+        }), {
+          status: 201,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
