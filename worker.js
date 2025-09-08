@@ -375,11 +375,12 @@ export default {
         }
         
         // Sign in user using Supabase Auth API with ANON_KEY
+        // TEMPORARY: Using SERVICE_KEY as fallback since ANON_KEY not configured in this environment
         const supabaseResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': env.SUPABASE_ANON_KEY
+            'apikey': env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY
           },
           body: JSON.stringify({
             email,
