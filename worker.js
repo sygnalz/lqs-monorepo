@@ -895,12 +895,134 @@ export default {
       }
     }
     
+    // PATCH /api/clients/:id endpoint (protected) - Update client billing information
+    if (url.pathname.startsWith('/api/clients/') && request.method === 'PATCH') {
+      try {
+        // Extract client ID from path
+        const clientId = url.pathname.split('/api/clients/')[1];
+        if (!clientId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Parse request body
+        const body = await request.json();
+        const { billing_address, rate_per_minute, rate_per_sms, rate_per_lead } = body;
+        
+        // Build update object with only provided fields
+        const updateData = {};
+        if (billing_address !== undefined) updateData.billing_address = billing_address;
+        if (rate_per_minute !== undefined) updateData.rate_per_minute = rate_per_minute;
+        if (rate_per_sms !== undefined) updateData.rate_per_sms = rate_per_sms;
+        if (rate_per_lead !== undefined) updateData.rate_per_lead = rate_per_lead;
+        
+        // Check if there are any fields to update
+        if (Object.keys(updateData).length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No valid fields provided for update'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Execute SQL UPDATE to modify client billing information
+        // Filter by both client ID and company_id for security (multi-tenant isolation)
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update client: ' + errorData
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const updatedClient = await updateResponse.json();
+        
+        // Check if client was found and updated
+        if (!updatedClient || updatedClient.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return successful response with updated client object
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedClient[0],
+          message: 'Client billing information updated successfully'
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         }
       });
