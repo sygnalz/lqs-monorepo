@@ -895,6 +895,99 @@ export default {
       }
     }
     
+    // GET /api/clients/:id endpoint (protected) - Retrieve single client by ID
+    if (url.pathname.startsWith('/api/clients/') && request.method === 'GET') {
+      try {
+        // Extract client ID from path
+        const clientId = url.pathname.split('/api/clients/')[1];
+        if (!clientId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Execute query to retrieve single client with multi-tenant security
+        // Filter by both client ID and company_id to ensure users can only access clients from their own company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve client'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
+        // Check if client was found (validates both ID existence and company ownership)
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return successful response with client object
+        return new Response(JSON.stringify({
+          success: true,
+          data: clientData[0]
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // PATCH /api/clients/:id endpoint (protected) - Update client billing information
     if (url.pathname.startsWith('/api/clients/') && request.method === 'PATCH') {
       try {
