@@ -8,8 +8,9 @@
     "deploy": "npm run build && wrangler pages deploy dist --project-name lqs-uat-environment"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
+    "@supabase/supabase-js": "^2.57.2",
     "axios": "^1.11.0",
+    "csv-parser": "^3.2.0",
     "hono": "^4.0.0"
   },
   "devDependencies": {

@@ -1,0 +1,169 @@
+step_id,question,possible_answer,tag,tag_definition
+path_q1,"Are you currently thinking more about buying a home, selling a home, or just exploring your options right now?",Buying,lead_type:buyer,The lead has expressed interest in buying a property
+path_q1,"Are you currently thinking more about buying a home, selling a home, or just exploring your options right now?",Selling,lead_type:seller,The lead has expressed interest in selling a property
+path_q1,"Are you currently thinking more about buying a home, selling a home, or just exploring your options right now?",Exploring,lead_type:undecided,The lead is unsure and just exploring options
+buyer_q2,"Great! Can I ask what’s motivating your move — are you looking for a first home, upsizing, downsizing, or maybe relocating?",First-time buyer,buyer_motivation:first_time,The lead is purchasing their first property
+buyer_q2,"Great! Can I ask what’s motivating your move — are you looking for a first home, upsizing, downsizing, or maybe relocating?",Upsizing,buyer_motivation:upsizing,The lead wants a larger home with more space
+buyer_q2,"Great! Can I ask what’s motivating your move — are you looking for a first home, upsizing, downsizing, or maybe relocating?",Downsizing,buyer_motivation:downsizing,The lead wants a smaller home with less maintenance
+buyer_q2,"Great! Can I ask what’s motivating your move — are you looking for a first home, upsizing, downsizing, or maybe relocating?",Relocating,buyer_motivation:relocating,"The lead is moving due to work, school, or lifestyle changes"
+buyer_q2,"Great! Can I ask what’s motivating your move — are you looking for a first home, upsizing, downsizing, or maybe relocating?",Investment,buyer_motivation:investment,The lead is buying as an investor
+buyer_q3,When are you hoping to make your move?,Immediately / Already looking,buyer_timeframe:immediate,The lead is actively looking for a home right now
+buyer_q3,When are you hoping to make your move?,0–3 months,buyer_timeframe:0_3_months,The lead wants to buy within the next 3 months
+buyer_q3,When are you hoping to make your move?,3–6 months,buyer_timeframe:3_6_months,The lead wants to buy in the next 3–6 months
+buyer_q3,When are you hoping to make your move?,6–12 months,buyer_timeframe:6_12_months,The lead is planning a move within 6–12 months
+buyer_q3,When are you hoping to make your move?,12+ months,buyer_timeframe:long_term,The lead is planning to buy in a year or later
+buyer_q4,Have you had a chance to get pre-approved for a mortgage yet?,Yes,buyer_financing:preapproved,The lead has mortgage pre-approval
+buyer_q4,Have you had a chance to get pre-approved for a mortgage yet?,Not yet,buyer_financing:planning_preapproval,The lead is planning to get pre-approval
+buyer_q4,Have you had a chance to get pre-approved for a mortgage yet?,Paying cash,buyer_financing:cash_buyer,The lead intends to purchase with cash
+buyer_q4,Have you had a chance to get pre-approved for a mortgage yet?,Not sure,buyer_financing:needs_guidance,The lead is unfamiliar with the mortgage process
+buyer_q5,What type of home are you most interested in?,Single-family home,buyer_home_type:single_family,The lead prefers a detached single-family residence
+buyer_q5,What type of home are you most interested in?,Condo,buyer_home_type:condo,The lead prefers a condominium
+buyer_q5,What type of home are you most interested in?,Townhome,buyer_home_type:townhome,The lead prefers a townhouse
+buyer_q5,What type of home are you most interested in?,Multi-family,buyer_home_type:multifamily,The lead prefers a duplex or multi-family property
+buyer_q5,What type of home are you most interested in?,Land,buyer_home_type:land,The lead is interested in vacant land
+buyer_q5,What type of home are you most interested in?,Luxury,buyer_home_type:luxury,The lead is seeking a luxury property
+buyer_q5,What type of home are you most interested in?,Open to options,buyer_home_type:flexible,The lead is open to different property types
+buyer_q6,"Do you already have a neighborhood or area in mind, or are you still exploring options?",Specific neighborhood(s),buyer_location:defined,The lead has a specific area chosen
+buyer_q6,"Do you already have a neighborhood or area in mind, or are you still exploring options?",Open to multiple areas,buyer_location:flexible,The lead is open to several neighborhoods
+buyer_q6,"Do you already have a neighborhood or area in mind, or are you still exploring options?",Relocating from out of town,buyer_location:out_of_area,The lead is moving in from another city/state
+buyer_appt_q1,Would it be helpful to schedule a quick 10–15 minute buyer consultation to go over next steps?,"Yes, schedule consultation",appointment_intent:yes,Lead agrees to set a buyer consultation
+buyer_appt_q1,Would it be helpful to schedule a quick 10–15 minute buyer consultation to go over next steps?,"No, not right now",appointment_intent:no,Lead declines to set an appointment at this time
+buyer_appt_q1,Would it be helpful to schedule a quick 10–15 minute buyer consultation to go over next steps?,"Maybe, send times",appointment_intent:maybe,Lead is open to an appointment but needs times/options
+buyer_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Phone,appointment_mode:phone,Lead prefers phone call for the appointment
+buyer_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Video,appointment_mode:video,Lead prefers video meeting for the appointment
+buyer_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",In person,appointment_mode:in_person,Lead prefers an in-person meeting
+buyer_appt_flow_q3,What time of day generally works best for you?,Morning,appointment_time_pref:morning,Lead prefers morning time slots
+buyer_appt_flow_q3,What time of day generally works best for you?,Afternoon,appointment_time_pref:afternoon,Lead prefers afternoon time slots
+buyer_appt_flow_q3,What time of day generally works best for you?,Evening,appointment_time_pref:evening,Lead prefers evening time slots
+buyer_appt_flow_q3,What time of day generally works best for you?,Weekend,appointment_time_pref:weekend,Lead prefers weekends
+buyer_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Text link,appointment_booking_method:text_link,Lead wants a booking link sent via SMS
+buyer_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Email link,appointment_booking_method:email_link,Lead wants a booking link sent via email
+buyer_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Share a few times,appointment_booking_method:manual_times,Lead prefers the agent to propose specific times
+buyer_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Today PM,appointment_candidate:today_pm,Lead is open to an appointment today afternoon/evening
+buyer_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow AM,appointment_candidate:tomorrow_am,Lead is open to an appointment tomorrow morning
+buyer_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow PM,appointment_candidate:tomorrow_pm,Lead is open to an appointment tomorrow afternoon/evening
+buyer_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),"Yes, confirmed",appointment_status:confirmed,Appointment date/time is confirmed by the lead
+buyer_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Needs to reschedule,appointment_status:reschedule_requested,Lead asks to change the date/time
+buyer_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Not confirmed,appointment_status:unconfirmed,Appointment not confirmed by the lead
+buyer_appt_q2,Would you like to tour homes that match your criteria this week?,"Yes, schedule tours",buyer_showing_request:yes,Lead wants to schedule property showings
+buyer_appt_q2,Would you like to tour homes that match your criteria this week?,Not yet,buyer_showing_request:no,Lead does not want to schedule showings yet
+buyer_appt_q3,Do you want an introduction to a trusted local lender for pre-approval?,"Yes, intro to lender",buyer_lender_intro:yes,Lead requests a lender introduction
+buyer_appt_q3,Do you want an introduction to a trusted local lender for pre-approval?,"No, already have lender",buyer_lender_intro:has_lender,Lead already has a lender
+buyer_appt_q3,Do you want an introduction to a trusted local lender for pre-approval?,"No, not interested",buyer_lender_intro:no,Lead is not interested in lender intro
+buyer_q7,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",Yes,local_events_interest:yes,The lead wants to receive local community event updates
+buyer_q7,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",No,local_events_interest:no,The lead does not want local community event updates
+buyer_q8,Is there anything you feel might make the buying process difficult for you right now?,Affordability,buyer_obstacle:affordability,The lead is concerned about affording a home
+buyer_q8,Is there anything you feel might make the buying process difficult for you right now?,Need to sell first,buyer_obstacle:need_to_sell,The lead must sell a property before buying
+buyer_q8,Is there anything you feel might make the buying process difficult for you right now?,Credit concerns,buyer_obstacle:credit,The lead is worried about their credit situation
+buyer_q8,Is there anything you feel might make the buying process difficult for you right now?,Uncertainty,buyer_obstacle:uncertainty,The lead has personal/job instability
+buyer_q8,Is there anything you feel might make the buying process difficult for you right now?,No obstacles,buyer_obstacle:none,The lead has no major buying obstacles
+buyer_q9,Would it be helpful if I set you up with alerts for new homes that match your criteria?,Yes,buyer_engagement:home_alerts_yes,The lead wants to receive property alerts
+buyer_q9,Would it be helpful if I set you up with alerts for new homes that match your criteria?,No,buyer_engagement:home_alerts_no,The lead does not want property alerts
+seller_q2,Do you already own the home you’d be selling?,Yes,seller_ownership:confirmed,The lead owns the property they want to sell
+seller_q2,Do you already own the home you’d be selling?,No,seller_ownership:not_owner,The lead does not currently own the property
+seller_q3,What’s motivating your decision to sell?,Upsizing,seller_motivation:upsizing,The lead wants to sell to purchase a larger home
+seller_q3,What’s motivating your decision to sell?,Downsizing,seller_motivation:downsizing,The lead wants to sell to move into a smaller home
+seller_q3,What’s motivating your decision to sell?,Relocating,seller_motivation:relocating,The lead is moving to another location
+seller_q3,What’s motivating your decision to sell?,Financial reasons,seller_motivation:financial,The lead needs to sell due to financial pressures
+seller_q3,What’s motivating your decision to sell?,Investment cash-out,seller_motivation:investment_cashout,The lead is selling an investment property for returns
+seller_q3,What’s motivating your decision to sell?,Other,seller_motivation:other,The lead has another reason for selling
+seller_q4,When are you hoping to put your home on the market?,Immediately,seller_timeframe:immediate,The lead wants to list their home right away
+seller_q4,When are you hoping to put your home on the market?,0–3 months,seller_timeframe:0_3_months,The lead wants to list within 3 months
+seller_q4,When are you hoping to put your home on the market?,3–6 months,seller_timeframe:3_6_months,The lead plans to sell in 3–6 months
+seller_q4,When are you hoping to put your home on the market?,6–12 months,seller_timeframe:6_12_months,The lead is planning to sell in 6–12 months
+seller_q4,When are you hoping to put your home on the market?,12+ months,seller_timeframe:long_term,The lead is considering selling in a year or more
+seller_q5,Have you made any recent updates or renovations to the home?,Yes,seller_property_condition:updated,The property has recent updates or renovations
+seller_q5,Have you made any recent updates or renovations to the home?,No,seller_property_condition:original,The property has not been updated recently
+seller_q6,Do you already know what you’d like to list the property for?,Yes,seller_pricing:has_price,The lead has a target listing price in mind
+seller_q6,Do you already know what you’d like to list the property for?,No,seller_pricing:needs_guidance,The lead needs guidance on pricing
+seller_appt_q1,"Would it help if I came by for a quick walkthrough to discuss pricing, prep, and timing?","Yes, schedule walkthrough",appointment_intent:yes,Lead agrees to an in-home walkthrough
+seller_appt_q1,"Would it help if I came by for a quick walkthrough to discuss pricing, prep, and timing?",No,appointment_intent:no,Lead declines to set an appointment at this time
+seller_appt_q1,"Would it help if I came by for a quick walkthrough to discuss pricing, prep, and timing?","Maybe, send times",appointment_intent:maybe,Lead is open to an appointment but needs times/options
+seller_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Phone,appointment_mode:phone,Lead prefers phone call for the appointment
+seller_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Video,appointment_mode:video,Lead prefers video meeting for the appointment
+seller_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",In person,appointment_mode:in_person,Lead prefers an in-person meeting
+seller_appt_flow_q3,What time of day generally works best for you?,Morning,appointment_time_pref:morning,Lead prefers morning time slots
+seller_appt_flow_q3,What time of day generally works best for you?,Afternoon,appointment_time_pref:afternoon,Lead prefers afternoon time slots
+seller_appt_flow_q3,What time of day generally works best for you?,Evening,appointment_time_pref:evening,Lead prefers evening time slots
+seller_appt_flow_q3,What time of day generally works best for you?,Weekend,appointment_time_pref:weekend,Lead prefers weekends
+seller_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Text link,appointment_booking_method:text_link,Lead wants a booking link sent via SMS
+seller_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Email link,appointment_booking_method:email_link,Lead wants a booking link sent via email
+seller_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Share a few times,appointment_booking_method:manual_times,Lead prefers the agent to propose specific times
+seller_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Today PM,appointment_candidate:today_pm,Lead is open to an appointment today afternoon/evening
+seller_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow AM,appointment_candidate:tomorrow_am,Lead is open to an appointment tomorrow morning
+seller_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow PM,appointment_candidate:tomorrow_pm,Lead is open to an appointment tomorrow afternoon/evening
+seller_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),"Yes, confirmed",appointment_status:confirmed,Appointment date/time is confirmed by the lead
+seller_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Needs to reschedule,appointment_status:reschedule_requested,Lead asks to change the date/time
+seller_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Not confirmed,appointment_status:unconfirmed,Appointment not confirmed by the lead
+seller_appt_q2,Shall we schedule a pricing strategy session to review comps and net proceeds?,"Yes, pricing session",seller_appointment_type:pricing_strategy,Lead wants a pricing/comps strategy meeting
+seller_appt_q2,Shall we schedule a pricing strategy session to review comps and net proceeds?,No,seller_appointment_type:skip_pricing,Lead declines a pricing session
+seller_appt_q3,"Do you want help coordinating photos, staging, and pre-listing repairs?","Yes, prep session",seller_appointment_type:listing_prep,Lead wants a listing preparation coordination session
+seller_appt_q3,"Do you want help coordinating photos, staging, and pre-listing repairs?",No,seller_appointment_type:skip_prep,Lead declines listing prep coordination
+seller_q7,Do you also need to buy a home after selling?,Yes,seller_next_step:buying_after_selling,The lead needs to purchase another home after selling
+seller_q7,Do you also need to buy a home after selling?,No,seller_next_step:no_buy_needed,The lead does not need to buy after selling
+seller_q8,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",Yes,local_events_interest:yes,The lead wants to receive local community event updates
+seller_q8,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",No,local_events_interest:no,The lead does not want local community event updates
+seller_q9,Is there anything that might make selling your home challenging for you right now?,Finding a new place,seller_obstacle:finding_new_home,The lead is worried about securing their next home
+seller_q9,Is there anything that might make selling your home challenging for you right now?,Market conditions,seller_obstacle:market_conditions,The lead is concerned about current real estate market conditions
+seller_q9,Is there anything that might make selling your home challenging for you right now?,Repairs or updates needed,seller_obstacle:repairs,The property needs repairs before sale
+seller_q9,Is there anything that might make selling your home challenging for you right now?,Finances,seller_obstacle:financial,The lead has financial limitations affecting the sale
+seller_q9,Is there anything that might make selling your home challenging for you right now?,No obstacles,seller_obstacle:none,The lead reports no major obstacles to selling
+seller_q10,Would it be helpful if I prepared a free market analysis (CMA) of your home?,Yes,seller_engagement:cma_yes,The lead wants a comparative market analysis
+seller_q10,Would it be helpful if I prepared a free market analysis (CMA) of your home?,No,seller_engagement:cma_no,The lead does not want a comparative market analysis
+exploring_q2,"What’s your main interest right now — are you more curious about the market, neighborhoods, or just keeping an eye on things?",Market trends,exploring_interest:market,The lead is mainly interested in overall real estate market conditions
+exploring_q2,"What’s your main interest right now — are you more curious about the market, neighborhoods, or just keeping an eye on things?",Neighborhoods,exploring_interest:neighborhoods,The lead is curious about local neighborhoods and communities
+exploring_q2,"What’s your main interest right now — are you more curious about the market, neighborhoods, or just keeping an eye on things?",Just browsing,exploring_interest:just_browsing,The lead is casually looking with no clear intention yet
+exploring_q3,"Do you think you might want to buy or sell in the future, or are you just learning for now?",Might buy later,exploring_future_intent:buyer_future,The lead may be interested in buying in the future
+exploring_q3,"Do you think you might want to buy or sell in the future, or are you just learning for now?",Might sell later,exploring_future_intent:seller_future,The lead may be interested in selling in the future
+exploring_q3,"Do you think you might want to buy or sell in the future, or are you just learning for now?",Just learning,exploring_future_intent:learning,The lead is only gathering information right now
+exploring_q4,What timeframe do you think you might get more serious about making a move?,0–3 months,exploring_timeframe:0_3_months,The lead may become active in the next 3 months
+exploring_q4,What timeframe do you think you might get more serious about making a move?,3–6 months,exploring_timeframe:3_6_months,The lead may become active in 3–6 months
+exploring_q4,What timeframe do you think you might get more serious about making a move?,6–12 months,exploring_timeframe:6_12_months,The lead may become active in 6–12 months
+exploring_q4,What timeframe do you think you might get more serious about making a move?,12+ months,exploring_timeframe:long_term,The lead may become active in a year or more
+exploring_q4,What timeframe do you think you might get more serious about making a move?,Not sure,exploring_timeframe:unknown,The lead is unsure about their future real estate plans
+exploring_appt_q1,Would a short strategy chat help you decide the right timing and whether buying or selling makes sense?,"Yes, strategy chat",appointment_intent:yes,Lead agrees to a general strategy conversation
+exploring_appt_q1,Would a short strategy chat help you decide the right timing and whether buying or selling makes sense?,No,appointment_intent:no,Lead declines to set an appointment at this time
+exploring_appt_q1,Would a short strategy chat help you decide the right timing and whether buying or selling makes sense?,"Maybe, send times",appointment_intent:maybe,Lead is open to an appointment but needs times/options
+exploring_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Phone,appointment_mode:phone,Lead prefers phone call for the appointment
+exploring_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",Video,appointment_mode:video,Lead prefers video meeting for the appointment
+exploring_appt_flow_q2,"Do you prefer a phone call, video meeting, or in-person meeting?",In person,appointment_mode:in_person,Lead prefers an in-person meeting
+exploring_appt_flow_q3,What time of day generally works best for you?,Morning,appointment_time_pref:morning,Lead prefers morning time slots
+exploring_appt_flow_q3,What time of day generally works best for you?,Afternoon,appointment_time_pref:afternoon,Lead prefers afternoon time slots
+exploring_appt_flow_q3,What time of day generally works best for you?,Evening,appointment_time_pref:evening,Lead prefers evening time slots
+exploring_appt_flow_q3,What time of day generally works best for you?,Weekend,appointment_time_pref:weekend,Lead prefers weekends
+exploring_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Text link,appointment_booking_method:text_link,Lead wants a booking link sent via SMS
+exploring_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Email link,appointment_booking_method:email_link,Lead wants a booking link sent via email
+exploring_appt_flow_q4,Would you like me to text or email you a calendar link to book a time?,Share a few times,appointment_booking_method:manual_times,Lead prefers the agent to propose specific times
+exploring_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Today PM,appointment_candidate:today_pm,Lead is open to an appointment today afternoon/evening
+exploring_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow AM,appointment_candidate:tomorrow_am,Lead is open to an appointment tomorrow morning
+exploring_appt_flow_q5,"Great—do any of these work: Today PM, Tomorrow AM, or Tomorrow PM?",Tomorrow PM,appointment_candidate:tomorrow_pm,Lead is open to an appointment tomorrow afternoon/evening
+exploring_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),"Yes, confirmed",appointment_status:confirmed,Appointment date/time is confirmed by the lead
+exploring_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Needs to reschedule,appointment_status:reschedule_requested,Lead asks to change the date/time
+exploring_appt_flow_q6,Perfect. I’ve locked that in—does this confirmation look right? (date/time summary),Not confirmed,appointment_status:unconfirmed,Appointment not confirmed by the lead
+exploring_q5,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",Yes,local_events_interest:yes,The lead wants to receive local community event updates
+exploring_q5,"A lot of my clients like staying updated on local events — things like festivals, new restaurants, and what’s happening around town. Would you like me to keep you in the loop on those too?",No,local_events_interest:no,The lead does not want local community event updates
+exploring_q6,Would it be helpful if I shared occasional market updates so you can see how things are changing?,Yes,exploring_engagement:market_updates_yes,The lead wants to receive market updates
+exploring_q6,Would it be helpful if I shared occasional market updates so you can see how things are changing?,No,exploring_engagement:market_updates_no,The lead does not want market updates
+dnc_q1,Understood. Would you like us to stop contacting you going forward?,"Yes, stop all contact",dnc_status:do_not_contact,Lead has requested no further contact via any channel
+dnc_q1,Understood. Would you like us to stop contacting you going forward?,"No, reduce frequency",dnc_status:reduced_contact,Lead requests fewer messages instead of full DNC
+dnc_q2,Which channels should we stop using for you?,Phone calls,dnc_channel:phone,Lead requests no phone calls
+dnc_q2,Which channels should we stop using for you?,Text/SMS,dnc_channel:sms,Lead requests no text messages
+dnc_q2,Which channels should we stop using for you?,Email,dnc_channel:email,Lead requests no emails
+dnc_q2,Which channels should we stop using for you?,All channels,dnc_channel:all,Lead requests no contact via any channel
+dnc_q3,Noted. Are you currently working with another agent?,"Yes, represented",representation_status:other_agent,Lead is already represented by another real estate agent
+dnc_q3,Noted. Are you currently working with another agent?,No,representation_status:none,Lead is not represented by another agent
+dnc_q4,Would you like to unsubscribe from marketing messages but still receive transaction-related updates if needed?,Unsubscribe marketing only,unsubscribe_scope:marketing_only,Lead opts out of marketing communications but allows transactional messages
+dnc_q4,Would you like to unsubscribe from marketing messages but still receive transaction-related updates if needed?,Unsubscribe all,unsubscribe_scope:all,Lead opts out of all communications including transactional
+dnc_q4,Would you like to unsubscribe from marketing messages but still receive transaction-related updates if needed?,Keep all,unsubscribe_scope:none,Lead keeps all communications
+dnc_q5,"To comply with your request, may I log your consent preference now?","Yes, record preference",consent_logging:recorded,Consent/DNC preference recorded for compliance
+dnc_q5,"To comply with your request, may I log your consent preference now?",No,consent_logging:not_recorded,Lead does not allow logging of consent/DNC preference
+dnc_q6,Would you like a confirmation of your opt-out settings via SMS or email?,SMS confirmation,dnc_confirmation_channel:sms,Lead prefers SMS confirmation of DNC settings
+dnc_q6,Would you like a confirmation of your opt-out settings via SMS or email?,Email confirmation,dnc_confirmation_channel:email,Lead prefers email confirmation of DNC settings
+dnc_q6,Would you like a confirmation of your opt-out settings via SMS or email?,No confirmation needed,dnc_confirmation_channel:none,Lead does not need DNC confirmation message
+dnc_q7,"Thank you for letting us know. For our records, can you share the main reason you’re opting out?",Too many messages,dnc_reason:frequency,Lead opts out due to message frequency
+dnc_q7,"Thank you for letting us know. For our records, can you share the main reason you’re opting out?",Not interested,dnc_reason:not_interested,Lead opts out due to lack of interest
+dnc_q7,"Thank you for letting us know. For our records, can you share the main reason you’re opting out?",Wrong person/number,dnc_reason:wrong_contact,Lead opts out because contact info is incorrect
+dnc_q7,"Thank you for letting us know. For our records, can you share the main reason you’re opting out?",Already working with someone,dnc_reason:other_agent,Lead opts out because they already have an agent
+dnc_q7,"Thank you for letting us know. For our records, can you share the main reason you’re opting out?",Other reason,dnc_reason:other,Lead opts out for another reason
+dnc_status_tags,System action after DNC confirmation,Apply suppression to all selected channels,dnc_enforcement:active,DNC flags are active; lead should not be contacted on suppressed channels
+dnc_status_tags,Legal compliance marker,Consent recorded with timestamp and source,compliance_audit:logged,Consent/DNC preferences captured for auditability
