@@ -27,7 +27,6 @@ const ClientDetailPage: React.FC = () => {
   // Tags state management
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [tagsIsLoading, setTagsIsLoading] = useState<boolean>(false);
-  const [tagsError, setTagsError] = useState<string | null>(null);
 
   // Add tag UI state
   const [addingTagForLead, setAddingTagForLead] = useState<string | null>(null);
@@ -201,7 +200,6 @@ const ClientDetailPage: React.FC = () => {
     const fetchAllTags = async (token: string) => {
       console.log('🔖 [TAGS] Fetching all available tags');
       setTagsIsLoading(true);
-      setTagsError(null);
 
       try {
         const tagsResponse = await axios.get(`${API_URL}/tags`, {
@@ -238,7 +236,7 @@ const ClientDetailPage: React.FC = () => {
           }
         }
 
-        setTagsError(tagsErrorMessage);
+        console.error('🔖 [TAGS] Error message:', tagsErrorMessage);
       } finally {
         setTagsIsLoading(false);
       }
