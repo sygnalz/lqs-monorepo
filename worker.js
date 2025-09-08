@@ -1087,7 +1087,7 @@ export default {
         }
         
         // Get leads data for the specific client with associated tags
-        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&select=*, lead_tags ( tags ( * ) )&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+        const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&select=*,lead_tags(tags(*))&limit=${limit}&offset=${offset}&order=created_at.desc`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
