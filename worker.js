@@ -55,8 +55,8 @@ async function getAuthenticatedProfile(request, env) {
   const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      'apikey': `${env.SUPABASE_SERVICE_KEY}`,
       'Content-Type': 'application/json'
     }
   });
@@ -144,8 +144,8 @@ export default {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+              'apikey': env.SUPABASE_SERVICE_KEY
             },
             body: JSON.stringify({
               email,
@@ -175,8 +175,8 @@ export default {
           const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+              'apikey': env.SUPABASE_SERVICE_KEY,
               'Content-Type': 'application/json',
               'Prefer': 'return=representation'
             },
@@ -190,8 +190,8 @@ export default {
             await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
               method: 'DELETE',
               headers: {
-                'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                'apikey': env.SUPABASE_SERVICE_KEY
               }
             });
             
@@ -215,8 +215,8 @@ export default {
           const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-              'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+              'apikey': env.SUPABASE_SERVICE_KEY,
               'Content-Type': 'application/json',
               'Prefer': 'return=representation'
             },
@@ -231,16 +231,16 @@ export default {
             await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${createdClientId}`, {
               method: 'DELETE',
               headers: {
-                'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                'apikey': env.SUPABASE_SERVICE_KEY
               }
             });
 
             await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/auth/v1/admin/users/${createdUserId}`, {
               method: 'DELETE',
               headers: {
-                'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-                'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                'apikey': env.SUPABASE_SERVICE_KEY
               }
             });
 
@@ -476,8 +476,8 @@ export default {
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
@@ -552,8 +552,8 @@ export default {
         const leadsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?${leadsQuery}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
             'Content-Type': 'application/json'
           }
         });
@@ -634,8 +634,8 @@ export default {
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
             'Content-Type': 'application/json'
           }
         });
@@ -734,8 +734,8 @@ export default {
         const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
@@ -825,8 +825,8 @@ export default {
         const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?select=*`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': `${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
             'Content-Type': 'application/json'
           }
         });
