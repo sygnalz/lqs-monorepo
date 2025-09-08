@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { Client } from '../types/client';
+import { Lead } from '../types/lead';
 import axios from 'axios';
 
 const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
@@ -16,6 +17,11 @@ const ClientDetailPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Leads state management
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsIsLoading, setLeadsIsLoading] = useState<boolean>(true);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
 
   // Form data state - initialized with empty values
   const [formData, setFormData] = useState({
@@ -77,6 +83,9 @@ const ClientDetailPage: React.FC = () => {
             rate_per_sms: clientData.rate_per_sms ? clientData.rate_per_sms.toString() : '',
             rate_per_lead: clientData.rate_per_lead ? clientData.rate_per_lead.toString() : ''
           });
+
+          // Fetch leads for this client after client data is successfully loaded
+          await fetchClientLeads(id, token);
         } else {
           throw new Error('Failed to fetch client data');
         }
@@ -113,6 +122,64 @@ const ClientDetailPage: React.FC = () => {
         setError(errorMessage);
       } finally {
         setIsLoading(false);
+      }
+    };
+
+    // Helper function to fetch leads for a client
+    const fetchClientLeads = async (clientId: string, token: string) => {
+      console.log(`📊 [CLIENT_LEADS] Fetching leads for client ID: ${clientId}`);
+      setLeadsIsLoading(true);
+      setLeadsError(null);
+
+      try {
+        // Make authenticated GET request to fetch client leads
+        const leadsResponse = await axios.get(`${API_URL}/clients/${clientId}/leads`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('📊 [CLIENT_LEADS] Response:', leadsResponse.data);
+
+        if (leadsResponse.data.success && Array.isArray(leadsResponse.data.data)) {
+          setLeads(leadsResponse.data.data);
+        } else {
+          throw new Error('Failed to fetch leads data');
+        }
+
+      } catch (err: any) {
+        console.error('📊 [CLIENT_LEADS] Failed to fetch leads:', err);
+
+        let leadsErrorMessage = 'Failed to fetch leads. Please try again.';
+
+        if (err?.response) {
+          console.error('📊 [CLIENT_LEADS] Error response:', {
+            status: err.response.status,
+            statusText: err.response.statusText,
+            data: err.response.data
+          });
+
+          if (err.response.status === 401) {
+            leadsErrorMessage = 'Authentication failed while fetching leads.';
+          } else if (err.response.status === 404) {
+            leadsErrorMessage = 'Client not found or no leads available.';
+          } else if (err.response.data?.error) {
+            leadsErrorMessage = err.response.data.error;
+          } else {
+            leadsErrorMessage = `HTTP ${err.response.status}: ${err.response.statusText}`;
+          }
+        } else if (err?.request) {
+          console.error('📊 [CLIENT_LEADS] No response received:', err.request);
+          leadsErrorMessage = 'Network error: Unable to connect to server.';
+        } else if (err?.message) {
+          console.error('📊 [CLIENT_LEADS] Error message:', err.message);
+          leadsErrorMessage = err.message;
+        }
+
+        setLeadsError(leadsErrorMessage);
+      } finally {
+        setLeadsIsLoading(false);
       }
     };
 
@@ -248,6 +315,11 @@ const ClientDetailPage: React.FC = () => {
   // Handle back to dashboard
   const handleBackToDashboard = () => {
     navigate('/dashboard');
+  };
+
+  // Handle add new lead navigation
+  const handleAddNewLead = () => {
+    navigate(`/clients/${id}/leads/new`);
   };
 
   // Loading state
@@ -620,6 +692,161 @@ const ClientDetailPage: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Leads Section */}
+            <div className="mt-8 bg-white shadow rounded-lg">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900">Leads</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Manage leads associated with this client
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAddNewLead}
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Add New Lead
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Leads Loading State */}
+                {leadsIsLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-3"></div>
+                      <span className="text-gray-600">Loading leads...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Leads Error State */}
+                {leadsError && !leadsIsLoading && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <strong className="font-bold">Error:</strong>
+                    <span className="block sm:inline"> {leadsError}</span>
+                  </div>
+                )}
+
+                {/* Leads Empty State */}
+                {!leadsIsLoading && !leadsError && leads.length === 0 && (
+                  <div className="text-center py-8">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No leads</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      No leads have been created for this client.
+                    </p>
+                    <div className="mt-6">
+                      <button
+                        onClick={handleAddNewLead}
+                        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        Add your first lead
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Leads Data State - Table Display */}
+                {!leadsIsLoading && !leadsError && leads.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Lead Name
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Email
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Phone
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Created
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {leads.map((lead) => (
+                          <tr key={lead.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">
+                                {lead.name}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {lead.email || 'Not provided'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {lead.phone || 'Not provided'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`inline-flex px-2 text-xs font-semibold rounded-full ${
+                                  lead.status === 'new'
+                                    ? 'bg-green-100 text-green-800'
+                                    : lead.status === 'contacted'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : lead.status === 'qualified'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : lead.status === 'converted'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}
+                              >
+                                {lead.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(lead.created_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
