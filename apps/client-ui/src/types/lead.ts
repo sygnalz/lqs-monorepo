@@ -1,3 +1,5 @@
+import { Tag } from './tag';
+
 export interface Lead {
   id: string;
   created_at: string;
@@ -7,4 +9,5 @@ export interface Lead {
   status: string;
   notes: string | null;
   client_id: string;
+  tags: Tag[];
 }

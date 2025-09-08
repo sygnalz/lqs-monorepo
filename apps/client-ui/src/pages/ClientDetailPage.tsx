@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { Client } from '../types/client';
 import { Lead } from '../types/lead';
+import { Tag } from '../types/tag';
 import axios from 'axios';
 
 const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
@@ -22,6 +23,16 @@ const ClientDetailPage: React.FC = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [leadsIsLoading, setLeadsIsLoading] = useState<boolean>(true);
   const [leadsError, setLeadsError] = useState<string | null>(null);
+
+  // Tags state management
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [tagsIsLoading, setTagsIsLoading] = useState<boolean>(false);
+  const [tagsError, setTagsError] = useState<string | null>(null);
+
+  // Add tag UI state
+  const [addingTagForLead, setAddingTagForLead] = useState<string | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<string>('');
+  const [isApplyingTag, setIsApplyingTag] = useState<boolean>(false);
 
   // Form data state - initialized with empty values
   const [formData, setFormData] = useState({
@@ -86,6 +97,9 @@ const ClientDetailPage: React.FC = () => {
 
           // Fetch leads for this client after client data is successfully loaded
           await fetchClientLeads(id, token);
+          
+          // Fetch all available tags for the tag management UI
+          await fetchAllTags(token);
         } else {
           throw new Error('Failed to fetch client data');
         }
@@ -180,6 +194,53 @@ const ClientDetailPage: React.FC = () => {
         setLeadsError(leadsErrorMessage);
       } finally {
         setLeadsIsLoading(false);
+      }
+    };
+
+    // Helper function to fetch all available tags
+    const fetchAllTags = async (token: string) => {
+      console.log('🔖 [TAGS] Fetching all available tags');
+      setTagsIsLoading(true);
+      setTagsError(null);
+
+      try {
+        const tagsResponse = await axios.get(`${API_URL}/tags`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('🔖 [TAGS] Response:', tagsResponse.data);
+
+        if (tagsResponse.data.success && Array.isArray(tagsResponse.data.data)) {
+          setAllTags(tagsResponse.data.data);
+        } else {
+          throw new Error('Failed to fetch tags data');
+        }
+
+      } catch (err: any) {
+        console.error('🔖 [TAGS] Failed to fetch tags:', err);
+
+        let tagsErrorMessage = 'Failed to fetch tags. Tag management may not be available.';
+
+        if (err?.response) {
+          console.error('🔖 [TAGS] Error response:', {
+            status: err.response.status,
+            statusText: err.response.statusText,
+            data: err.response.data
+          });
+
+          if (err.response.status === 401) {
+            tagsErrorMessage = 'Authentication failed while fetching tags.';
+          } else if (err.response.data?.error) {
+            tagsErrorMessage = err.response.data.error;
+          }
+        }
+
+        setTagsError(tagsErrorMessage);
+      } finally {
+        setTagsIsLoading(false);
       }
     };
 
@@ -320,6 +381,95 @@ const ClientDetailPage: React.FC = () => {
   // Handle add new lead navigation
   const handleAddNewLead = () => {
     navigate(`/clients/${id}/leads/new`);
+  };
+
+  // Handle showing add tag UI for a specific lead
+  const handleShowAddTag = (leadId: string) => {
+    setAddingTagForLead(leadId);
+    setSelectedTagId('');
+  };
+
+  // Handle hiding add tag UI
+  const handleHideAddTag = () => {
+    setAddingTagForLead(null);
+    setSelectedTagId('');
+  };
+
+  // Handle applying a tag to a lead
+  const handleApplyTag = async (leadId: string, tagId: string) => {
+    if (!tagId) return;
+
+    setIsApplyingTag(true);
+
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      console.log(`🏷️ [APPLY_TAG] Applying tag ${tagId} to lead ${leadId}`);
+
+      // Send POST request to apply tag
+      const response = await axios.post(`${API_URL}/leads/${leadId}/tags`, {
+        tag_id: tagId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🏷️ [APPLY_TAG] Response:', response.data);
+
+      if (response.data.success) {
+        // Find the tag object from allTags
+        const appliedTag = allTags.find(tag => tag.id === tagId);
+        
+        if (appliedTag) {
+          // Update local state by adding the tag to the specific lead
+          setLeads(prevLeads => 
+            prevLeads.map(lead => 
+              lead.id === leadId 
+                ? { ...lead, tags: [...lead.tags, appliedTag] }
+                : lead
+            )
+          );
+
+          console.log('🏷️ [APPLY_TAG] Tag applied and local state updated');
+        }
+
+        // Hide the add tag UI
+        handleHideAddTag();
+      } else {
+        throw new Error('Failed to apply tag');
+      }
+
+    } catch (err: any) {
+      console.error('🏷️ [APPLY_TAG] Failed to apply tag:', err);
+
+      let errorMessage = 'Failed to apply tag. Please try again.';
+
+      if (err?.response) {
+        if (err.response.status === 409) {
+          errorMessage = 'This tag has already been applied to this lead.';
+        } else if (err.response.status === 404) {
+          errorMessage = 'Lead or tag not found.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        }
+      }
+
+      // You could add a toast notification here in the future
+      alert(errorMessage);
+    } finally {
+      setIsApplyingTag(false);
+    }
+  };
+
+  // Get available tags for a specific lead (exclude already applied tags)
+  const getAvailableTagsForLead = (lead: Lead): Tag[] => {
+    const appliedTagIds = lead.tags.map(tag => tag.id);
+    return allTags.filter(tag => !appliedTagIds.includes(tag.id));
   };
 
   // Loading state
@@ -798,6 +948,12 @@ const ClientDetailPage: React.FC = () => {
                             scope="col"
                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
+                            Tags
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
                             Created
                           </th>
                         </tr>
@@ -836,6 +992,70 @@ const ClientDetailPage: React.FC = () => {
                               >
                                 {lead.status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {/* Existing Tag Badges */}
+                                {lead.tags.map((tag) => (
+                                  <span
+                                    key={tag.id}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                                    title={tag.tag_definition || tag.tag || 'Tag'}
+                                  >
+                                    {tag.tag || 'Unknown Tag'}
+                                  </span>
+                                ))}
+
+                                {/* Add Tag UI */}
+                                {addingTagForLead === lead.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <select
+                                      value={selectedTagId}
+                                      onChange={(e) => setSelectedTagId(e.target.value)}
+                                      className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                      disabled={isApplyingTag}
+                                    >
+                                      <option value="">Select tag...</option>
+                                      {getAvailableTagsForLead(lead).map((tag) => (
+                                        <option key={tag.id} value={tag.id}>
+                                          {tag.tag || 'Unknown Tag'}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleApplyTag(lead.id, selectedTagId)}
+                                      disabled={!selectedTagId || isApplyingTag}
+                                      className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {isApplyingTag ? 'Adding...' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={handleHideAddTag}
+                                      disabled={isApplyingTag}
+                                      className="text-xs px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 disabled:opacity-50"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  /* Add Tag Button */
+                                  <button
+                                    onClick={() => handleShowAddTag(lead.id)}
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-full border-2 border-dashed border-gray-300 text-gray-400 hover:border-indigo-300 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    title="Add tag"
+                                    disabled={tagsIsLoading || getAvailableTagsForLead(lead).length === 0}
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                  </button>
+                                )}
+
+                                {/* Show message if no tags available */}
+                                {!tagsIsLoading && getAvailableTagsForLead(lead).length === 0 && addingTagForLead !== lead.id && (
+                                  <span className="text-xs text-gray-400 italic">All tags applied</span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(lead.created_at).toLocaleDateString()}
