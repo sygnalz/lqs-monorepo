@@ -1646,6 +1646,295 @@ export default {
       }
     }
     
+    // PATCH /api/leads/:leadId endpoint (protected) - Update a lead
+    if (url.pathname.match(/^\/api\/leads\/[^\/]+$/) && request.method === 'PATCH') {
+      try {
+        // Extract lead ID from path
+        const pathParts = url.pathname.split('/');
+        const leadId = pathParts[3]; // /api/leads/{leadId}
+        
+        if (!leadId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Parse and validate request body
+        const body = await request.json();
+        const { name, email, phone, status, notes } = body;
+        
+        // Validate email format if provided
+        if (email) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid email format'
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+        }
+        
+        // Security Check: First verify that the lead exists and belongs to the user's company through client relationship
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id,clients!inner(company_id)`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify lead ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadData = await leadResponse.json();
+        
+        // If no lead found or doesn't belong to user's company, return 404 Not Found
+        if (!leadData || leadData.length === 0 || leadData[0].clients.company_id !== companyId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Build update object with only provided fields
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+        if (status !== undefined) updateData.status = status;
+        if (notes !== undefined) updateData.notes = notes;
+        
+        // If no fields to update, return bad request
+        if (Object.keys(updateData).length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'At least one field must be provided for update'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Execute SQL UPDATE to update lead
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!updateResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update lead'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const updatedLead = await updateResponse.json();
+        
+        // Return success response with updated lead data
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedLead[0]
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body or server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // DELETE /api/leads/:leadId endpoint (protected) - Delete a lead
+    if (url.pathname.match(/^\/api\/leads\/[^\/]+$/) && request.method === 'DELETE') {
+      try {
+        // Extract lead ID from path
+        const pathParts = url.pathname.split('/');
+        const leadId = pathParts[3]; // /api/leads/{leadId}
+        
+        if (!leadId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Security Check: First verify that the lead exists and belongs to the user's company through client relationship
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id,clients!inner(company_id)`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify lead ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadData = await leadResponse.json();
+        
+        // If no lead found or doesn't belong to user's company, return 404 Not Found
+        if (!leadData || leadData.length === 0 || leadData[0].clients.company_id !== companyId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Delete associated lead_tags first (CASCADE handling)
+        const deleteTagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/lead_tags?lead_id=eq.${leadId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Note: Don't fail if tag deletion fails as some leads may have no tags
+        
+        // Execute SQL DELETE to remove lead
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete lead'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return success response with 204 No Content
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
