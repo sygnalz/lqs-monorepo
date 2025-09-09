@@ -36,6 +36,21 @@ const ClientDetailPage: React.FC = () => {
   // Remove tag UI state
   const [isRemovingTag, setIsRemovingTag] = useState<boolean>(false);
 
+  // Lead editing state
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [isEditingLead, setIsEditingLead] = useState<boolean>(false);
+  const [leadFormData, setLeadFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    status: '',
+    notes: ''
+  });
+
+  // Lead deletion state
+  const [deletingLead, setDeletingLead] = useState<Lead | null>(null);
+  const [isDeletingLead, setIsDeletingLead] = useState<boolean>(false);
+
   // Form data state - initialized with empty values
   const [formData, setFormData] = useState({
     name: '',
@@ -533,6 +548,205 @@ const ClientDetailPage: React.FC = () => {
     return allTags.filter(tag => !appliedTagIds.includes(tag.id));
   };
 
+  // Handle starting lead edit
+  const handleStartEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+    setLeadFormData({
+      name: lead.name || '',
+      email: lead.email || '',
+      phone: lead.phone || '',
+      status: lead.status || 'new',
+      notes: lead.notes || ''
+    });
+    setIsEditingLead(true);
+  };
+
+  // Handle canceling lead edit
+  const handleCancelEditLead = () => {
+    setEditingLead(null);
+    setIsEditingLead(false);
+    setLeadFormData({
+      name: '',
+      email: '',
+      phone: '',
+      status: '',
+      notes: ''
+    });
+  };
+
+  // Handle lead form input changes
+  const handleLeadInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setLeadFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle updating a lead
+  const handleUpdateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+
+    setIsEditingLead(true);
+
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      console.log(`✏️ [UPDATE_LEAD] Updating lead ${editingLead.id}`);
+      console.log('✏️ [UPDATE_LEAD] Form data:', leadFormData);
+
+      // Validate required fields
+      if (!leadFormData.name.trim()) {
+        throw new Error('Lead name is required');
+      }
+
+      if (!leadFormData.email.trim()) {
+        throw new Error('Email is required');
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(leadFormData.email)) {
+        throw new Error('Invalid email format');
+      }
+
+      // Build update payload
+      const updatePayload = {
+        name: leadFormData.name.trim(),
+        email: leadFormData.email.trim(),
+        phone: leadFormData.phone.trim() || null,
+        status: leadFormData.status || 'new',
+        notes: leadFormData.notes.trim() || null
+      };
+
+      console.log('✏️ [UPDATE_LEAD] Update payload:', updatePayload);
+
+      // Send PATCH request to update lead
+      const response = await axios.patch(`${API_URL}/leads/${editingLead.id}`, updatePayload, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('✏️ [UPDATE_LEAD] Response:', response.data);
+
+      if (response.data.success && response.data.data) {
+        // Update local leads state
+        const updatedLead = response.data.data;
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === editingLead.id 
+              ? { ...updatedLead, tags: lead.tags } // Preserve tags from local state
+              : lead
+          )
+        );
+
+        console.log('✏️ [UPDATE_LEAD] Lead updated successfully');
+        handleCancelEditLead();
+      } else {
+        throw new Error('Failed to update lead');
+      }
+
+    } catch (err: any) {
+      console.error('✏️ [UPDATE_LEAD] Failed to update lead:', err);
+
+      let errorMessage = 'Failed to update lead. Please try again.';
+
+      if (err?.response) {
+        if (err.response.status === 401) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else if (err.response.status === 404) {
+          errorMessage = 'Lead not found.';
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied: You do not have permission to update this lead.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      alert(errorMessage);
+    } finally {
+      setIsEditingLead(false);
+    }
+  };
+
+  // Handle starting lead deletion (show confirmation)
+  const handleStartDeleteLead = (lead: Lead) => {
+    setDeletingLead(lead);
+  };
+
+  // Handle canceling lead deletion
+  const handleCancelDeleteLead = () => {
+    setDeletingLead(null);
+  };
+
+  // Handle confirming lead deletion
+  const handleConfirmDeleteLead = async () => {
+    if (!deletingLead) return;
+
+    setIsDeletingLead(true);
+
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      console.log(`🗑️ [DELETE_LEAD] Deleting lead ${deletingLead.id}`);
+
+      // Send DELETE request to remove lead
+      const response = await axios.delete(`${API_URL}/leads/${deletingLead.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🗑️ [DELETE_LEAD] Response status:', response.status);
+
+      // Check for successful 204 No Content response
+      if (response.status === 204) {
+        // Remove lead from local state
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== deletingLead.id));
+
+        console.log('🗑️ [DELETE_LEAD] Lead deleted successfully');
+        handleCancelDeleteLead();
+      } else {
+        throw new Error('Failed to delete lead');
+      }
+
+    } catch (err: any) {
+      console.error('🗑️ [DELETE_LEAD] Failed to delete lead:', err);
+
+      let errorMessage = 'Failed to delete lead. Please try again.';
+
+      if (err?.response) {
+        if (err.response.status === 401) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else if (err.response.status === 404) {
+          errorMessage = 'Lead not found or already deleted.';
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied: You do not have permission to delete this lead.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        }
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      alert(errorMessage);
+    } finally {
+      setIsDeletingLead(false);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -1017,6 +1231,12 @@ const ClientDetailPage: React.FC = () => {
                           >
                             Created
                           </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Actions
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -1132,6 +1352,33 @@ const ClientDetailPage: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {new Date(lead.created_at).toLocaleDateString()}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center justify-end space-x-2">
+                                {/* Edit Button */}
+                                <button
+                                  onClick={() => handleStartEditLead(lead)}
+                                  disabled={isEditingLead || isDeletingLead}
+                                  className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Edit Lead"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  onClick={() => handleStartDeleteLead(lead)}
+                                  disabled={isEditingLead || isDeletingLead}
+                                  className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete Lead"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1143,6 +1390,176 @@ const ClientDetailPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Lead</h3>
+              
+              <form onSubmit={handleUpdateLead} className="space-y-4">
+                {/* Lead Name */}
+                <div>
+                  <label htmlFor="lead-name" className="block text-sm font-medium text-gray-700">
+                    Lead Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="lead-name"
+                    name="name"
+                    value={leadFormData.name}
+                    onChange={handleLeadInputChange}
+                    required
+                    disabled={isEditingLead}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter lead name"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="lead-email" className="block text-sm font-medium text-gray-700">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    id="lead-email"
+                    name="email"
+                    value={leadFormData.email}
+                    onChange={handleLeadInputChange}
+                    required
+                    disabled={isEditingLead}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter email address"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label htmlFor="lead-phone" className="block text-sm font-medium text-gray-700">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    id="lead-phone"
+                    name="phone"
+                    value={leadFormData.phone}
+                    onChange={handleLeadInputChange}
+                    disabled={isEditingLead}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label htmlFor="lead-status" className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    id="lead-status"
+                    name="status"
+                    value={leadFormData.status}
+                    onChange={handleLeadInputChange}
+                    disabled={isEditingLead}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="converted">Converted</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label htmlFor="lead-notes" className="block text-sm font-medium text-gray-700">
+                    Notes
+                  </label>
+                  <textarea
+                    id="lead-notes"
+                    name="notes"
+                    rows={3}
+                    value={leadFormData.notes}
+                    onChange={handleLeadInputChange}
+                    disabled={isEditingLead}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Enter any notes about this lead"
+                  />
+                </div>
+
+                {/* Modal Actions */}
+                <div className="flex items-center justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelEditLead}
+                    disabled={isEditingLead}
+                    className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isEditingLead}
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {isEditingLead && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    )}
+                    {isEditingLead ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Lead Confirmation Modal */}
+      {deletingLead && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              
+              <h3 className="text-lg font-medium text-gray-900 mt-4 mb-2">Delete Lead</h3>
+              
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to delete <strong>{deletingLead.name}</strong>? 
+                This action cannot be undone and will permanently remove the lead and all associated data.
+              </p>
+
+              <div className="flex items-center justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelDeleteLead}
+                  disabled={isDeletingLead}
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteLead}
+                  disabled={isDeletingLead}
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isDeletingLead && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  )}
+                  {isDeletingLead ? 'Deleting...' : 'Delete Lead'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
