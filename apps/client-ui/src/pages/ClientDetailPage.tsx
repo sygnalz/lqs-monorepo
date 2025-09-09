@@ -6,7 +6,7 @@ import { Lead } from '../types/lead';
 import { Tag } from '../types/tag';
 import axios from 'axios';
 
-const API_URL = 'https://8787-i93xvr9j47a18hrsasny0-6532622b.e2b.dev/api';
+const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 const ClientDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
