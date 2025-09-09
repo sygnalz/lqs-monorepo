@@ -6,7 +6,7 @@ import { Lead } from '../types/lead';
 import { Tag } from '../types/tag';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = 'https://8787-i93xvr9j47a18hrsasny0-6532622b.e2b.dev/api';
 
 const ClientDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +32,9 @@ const ClientDetailPage: React.FC = () => {
   const [addingTagForLead, setAddingTagForLead] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string>('');
   const [isApplyingTag, setIsApplyingTag] = useState<boolean>(false);
+
+  // Remove tag UI state
+  const [isRemovingTag, setIsRemovingTag] = useState<boolean>(false);
 
   // Form data state - initialized with empty values
   const [formData, setFormData] = useState({
@@ -461,6 +464,66 @@ const ClientDetailPage: React.FC = () => {
       alert(errorMessage);
     } finally {
       setIsApplyingTag(false);
+    }
+  };
+
+  // Handle removing a tag from a lead
+  const handleRemoveTag = async (leadId: string, tagId: string) => {
+    setIsRemovingTag(true);
+
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      console.log(`🗑️ [REMOVE_TAG] Removing tag ${tagId} from lead ${leadId}`);
+
+      // Send DELETE request to remove tag
+      const response = await axios.delete(`${API_URL}/leads/${leadId}/tags/${tagId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🗑️ [REMOVE_TAG] Response:', response.status);
+
+      // Check for successful 204 No Content response
+      if (response.status === 204) {
+        // Update local state by removing the tag from the specific lead
+        setLeads(prevLeads => 
+          prevLeads.map(lead => 
+            lead.id === leadId 
+              ? { ...lead, tags: lead.tags.filter(tag => tag.id !== tagId) }
+              : lead
+          )
+        );
+
+        console.log('🗑️ [REMOVE_TAG] Tag removed and local state updated');
+      } else {
+        throw new Error('Failed to remove tag');
+      }
+
+    } catch (err: any) {
+      console.error('🗑️ [REMOVE_TAG] Failed to remove tag:', err);
+
+      let errorMessage = 'Failed to remove tag. Please try again.';
+
+      if (err?.response) {
+        if (err.response.status === 404) {
+          errorMessage = 'Tag association not found or already removed.';
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied: You do not have permission to remove this tag.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        }
+      }
+
+      // You could add a toast notification here in the future
+      alert(errorMessage);
+    } finally {
+      setIsRemovingTag(false);
     }
   };
 
@@ -993,7 +1056,7 @@ const ClientDetailPage: React.FC = () => {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex flex-wrap items-center gap-2">
-                                {/* Existing Tag Badges */}
+                                {/* Existing Tag Badges with Remove Button */}
                                 {lead.tags.map((tag) => (
                                   <span
                                     key={tag.id}
@@ -1001,6 +1064,17 @@ const ClientDetailPage: React.FC = () => {
                                     title={tag.tag_definition || tag.tag || 'Tag'}
                                   >
                                     {tag.tag || 'Unknown Tag'}
+                                    <button
+                                      onClick={() => handleRemoveTag(lead.id, tag.id)}
+                                      disabled={isRemovingTag}
+                                      className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-indigo-200 focus:outline-none focus:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Remove tag"
+                                      type="button"
+                                    >
+                                      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                      </svg>
+                                    </button>
                                   </span>
                                 ))}
 

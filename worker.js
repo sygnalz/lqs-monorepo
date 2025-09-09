@@ -1452,6 +1452,200 @@ export default {
       }
     }
     
+    // DELETE /api/leads/:leadId/tags/:tagId endpoint (protected) - Remove tag from lead
+    if (url.pathname.match(/^\/api\/leads\/[^\/]+\/tags\/[^\/]+$/) && request.method === 'DELETE') {
+      try {
+        // Extract lead ID and tag ID from path
+        const pathParts = url.pathname.split('/');
+        const leadId = pathParts[3]; // /api/leads/{leadId}/tags/{tagId}
+        const tagId = pathParts[5];
+        
+        if (!leadId || !tagId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead ID and Tag ID are required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Security Check: First verify that the lead exists
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify lead existence'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadData = await leadResponse.json();
+        
+        // Check if lead exists
+        if (!leadData || leadData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Lead not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Now verify that the client belongs to the user's company (multi-tenant security check)
+        const clientId = leadData[0].client_id;
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
+        // Verify company ownership through the client relationship
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Access denied: Lead does not belong to your company'
+          }), {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Check if the tag association exists before attempting to delete
+        const leadTagResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/lead_tags?lead_id=eq.${leadId}&tag_id=eq.${tagId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!leadTagResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify tag association'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const leadTagData = await leadTagResponse.json();
+        
+        // If no association found, return 404 Not Found
+        if (!leadTagData || leadTagData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Tag association not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Delete the lead-tag relationship from lead_tags table
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/lead_tags?lead_id=eq.${leadId}&tag_id=eq.${tagId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          const errorData = await deleteResponse.json();
+          return new Response(JSON.stringify({
+            success: false,
+            error: errorData.message || 'Failed to remove tag from lead'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return 204 No Content on successful deletion
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {

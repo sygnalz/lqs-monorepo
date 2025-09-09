@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // This is the definitive backend URL for the UAT environment
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = 'https://8787-i93xvr9j47a18hrsasny0-6532622b.e2b.dev/api';
 
 const signUp = async (data: { email: string; companyName: string; }) => {
   console.log("🔐 [AUTH SERVICE] SignUp function called");
