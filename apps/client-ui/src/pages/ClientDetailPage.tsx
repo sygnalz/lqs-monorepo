@@ -416,13 +416,18 @@ const ClientDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('🗑️ [CLIENT_DELETE] Failed to delete client:', err);
 
+      // Handle 404 as success case - client was already deleted or doesn't exist
+      if (err?.response?.status === 404) {
+        console.log('🗑️ [CLIENT_DELETE] Client not found (404) - treating as successful deletion');
+        navigate('/dashboard');
+        return;
+      }
+
       let errorMessage = 'Failed to delete client. Please try again.';
 
       if (err?.response) {
         if (err.response.status === 401) {
           errorMessage = 'Authentication failed. Please sign in again.';
-        } else if (err.response.status === 404) {
-          errorMessage = 'Client not found.';
         } else if (err.response.status === 403) {
           errorMessage = 'Access denied: You do not have permission to delete this client.';
         } else if (err.response.data?.error) {
@@ -1212,8 +1217,8 @@ const ClientDetailPage: React.FC = () => {
       </main>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3 text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                 <svg
