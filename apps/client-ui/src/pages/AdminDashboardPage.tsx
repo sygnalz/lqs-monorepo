@@ -36,8 +36,7 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   // Fetch agents (clients) and prospects (leads)
-  useEffect(() => {
-    const fetchAdminData = async () => {
+  const fetchAdminData = async () => {
       console.log("🏢 [ADMIN DASHBOARD] Starting to fetch admin data...");
       setIsLoading(true);
       setError(null);
@@ -175,6 +174,7 @@ const AdminDashboardPage: React.FC = () => {
       }
     };
 
+  useEffect(() => {
     fetchAdminData();
   }, [logout, navigate]);
 

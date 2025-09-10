@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test';
  * 6. Assert that the page navigates to the correct /prospect/{prospectId} URL
  */
 
-const UAT_BASE_URL = 'https://333dc223.lqs-p12-uat.pages.dev';
+const UAT_BASE_URL = 'https://a7867188.lqs-p12-uat.pages.dev';
 const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 // Test credentials
