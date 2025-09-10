@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test';
  * 6. Assert that the page navigates to the correct /prospect/{prospectId} URL
  */
 
-const UAT_BASE_URL = 'https://f302e87a.lqs-p12-uat.pages.dev';
+const UAT_BASE_URL = 'https://311c1b95.lqs-p12-uat.pages.dev';
 const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 // Test credentials
@@ -330,7 +330,30 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
   test('should display automation controls', async ({ page }) => {
     console.log('🧪 Testing automation controls...');
     
-    // Navigate to admin dashboard
+    // STEP 1: Navigate to UAT URL and log in successfully
+    console.log('🌐 STEP 1: Navigate to UAT and log in successfully');
+    await page.goto('/');
+    
+    // Look for login form elements
+    const emailInput = page.locator('input[type="email"], input[placeholder*="email" i], input[name="email"]').first();
+    const passwordInput = page.locator('input[type="password"], input[placeholder*="password" i], input[name="password"]').first();
+    const loginButton = page.locator('button:has-text("Sign In"), button:has-text("Login"), button[type="submit"]').first();
+    
+    // Fill login form
+    await emailInput.fill(TEST_USER.email);
+    await passwordInput.fill(TEST_USER.password);
+    
+    // Click login button
+    await loginButton.click();
+    await page.waitForTimeout(3000);
+    
+    // Verify login success
+    const isLoggedIn = await page.locator('text=/client|dashboard|leads|logout/i').first().isVisible({ timeout: 10000 });
+    expect(isLoggedIn).toBeTruthy();
+    console.log('✅ STEP 1 COMPLETE: Login successful');
+    
+    // STEP 2: Navigate to admin dashboard
+    console.log('📋 STEP 2: Navigate to the /admin dashboard route');
     await page.goto('/admin');
     
     // Wait for the page to load
