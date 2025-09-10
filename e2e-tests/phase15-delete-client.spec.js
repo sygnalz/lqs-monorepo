@@ -57,14 +57,19 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     await expect(page.locator('text=This will permanently delete the client and all associated leads')).toBeVisible();
     console.log('✅ Step 5: Delete confirmation modal appeared with correct warning');
     
-    const cancelButton = page.locator('button:has-text("Cancel")');
-    await cancelButton.click({ force: true });
+    await page.evaluate(() => {
+      const cancelButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.trim() === 'Cancel');
+      if (cancelButton) cancelButton.click();
+    });
     await expect(page.locator('text=Are you sure you want to delete')).not.toBeVisible();
     console.log('✅ Step 6: Cancel button works correctly');
     
     await page.click('button:has-text("Delete Client")');
-    const deleteButton = page.locator('button:has-text("Delete Client")').last();
-    await deleteButton.click({ force: true });
+    await page.evaluate(() => {
+      const deleteButtons = Array.from(document.querySelectorAll('button')).filter(btn => btn.textContent.includes('Delete Client'));
+      const modalDeleteButton = deleteButtons.find(btn => btn.closest('.fixed'));
+      if (modalDeleteButton) modalDeleteButton.click();
+    });
     console.log('✅ Step 7: Confirmed client deletion');
     
     await expect(page).toHaveURL(/.*\/dashboard/, { timeout: 10000 });
