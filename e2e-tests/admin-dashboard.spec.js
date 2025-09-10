@@ -227,7 +227,7 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
     console.log(`📍 Current URL: ${currentUrl}`);
     
     // Verify URL matches the pattern /prospect/{prospectId}
-    const prospectUrlPattern = /\\/prospect\\/[a-f0-9-]+$/;
+    const prospectUrlPattern = /\/prospect\/[a-f0-9-]+$/;
     expect(currentUrl).toMatch(prospectUrlPattern);
     
     // Extract prospect ID from URL
