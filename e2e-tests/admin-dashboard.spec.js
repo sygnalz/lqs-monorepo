@@ -40,6 +40,9 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
         email: TEST_USER.email,
         password: TEST_USER.password,
         companyName: TEST_USER.companyName
+      },
+      headers: {
+        'Content-Type': 'application/json'
       }
     });
     
@@ -51,6 +54,9 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
       data: {
         email: TEST_USER.email,
         password: TEST_USER.password
+      },
+      headers: {
+        'Content-Type': 'application/json'
       }
     });
     
@@ -69,6 +75,7 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
         primary_contact_phone: '+1555ADMIN01'
       },
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`
       }
     });
@@ -106,6 +113,7 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
       const leadResponse = await request.post(`${API_BASE_URL}/api/clients/${testClientId}/leads`, {
         data: prospect,
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
         }
       });
