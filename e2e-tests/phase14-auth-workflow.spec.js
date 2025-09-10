@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 const UAT_BASE_URL = 'http://localhost:5173';
 const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
