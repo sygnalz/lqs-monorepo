@@ -9,6 +9,8 @@ import LeadDetail from './components/LeadDetail'
 import CreateClient from './components/CreateClient'
 import ClientDetailPage from './pages/ClientDetailPage'
 import CreateLeadPage from './pages/CreateLeadPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
+import ProspectDetailPage from './pages/ProspectDetailPage'
 
 function App() {
   return (
@@ -63,6 +65,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ClientDetailPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/prospect/:prospectId" 
+            element={
+              <ProtectedRoute>
+                <ProspectDetailPage />
               </ProtectedRoute>
             } 
           />
