@@ -46,11 +46,47 @@ Run full E2E test suite to verify Phase 13 automation controls are deployed and 
 npx playwright test e2e-tests/admin-dashboard.spec.js --reporter=line
 ```
 
-### Step 8: Validate Success
+### Step 8: Apply Database Migration (Critical for Phase 13)
+**IMPORTANT:** Before running E2E tests, ensure the automation fields migration has been applied to the UAT Supabase database:
+```sql
+-- Execute this in Supabase SQL Editor: Dashboard → SQL Editor → New Query
+-- File: migrations/0002_add_automation_fields.sql
+
+ALTER TABLE public.leads 
+ADD COLUMN IF NOT EXISTS last_action_type TEXT,
+ADD COLUMN IF NOT EXISTS last_action_timestamp TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS next_action_type TEXT,
+ADD COLUMN IF NOT EXISTS next_action_scheduled TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS automation_status TEXT DEFAULT 'active',
+ADD COLUMN IF NOT EXISTS automation_notes TEXT;
+
+-- Add constraint and indexes
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.check_constraints 
+                   WHERE constraint_name = 'leads_automation_status_check') THEN
+        ALTER TABLE public.leads 
+        ADD CONSTRAINT leads_automation_status_check 
+        CHECK (automation_status IN ('active', 'paused', 'review_bin'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_leads_automation_status ON public.leads(automation_status);
+CREATE INDEX IF NOT EXISTS idx_leads_last_action_timestamp ON public.leads(last_action_timestamp);
+CREATE INDEX IF NOT EXISTS idx_leads_next_action_scheduled ON public.leads(next_action_scheduled);
+```
+
+### Step 9: Validate Success
 Ensure all 3 E2E tests pass:
 - Admin Dashboard API Integration Verification
 - Complete Admin Dashboard Workflow (with "Last Action" and "Next Action" columns)
 - should display automation controls (with checkboxes and bulk actions)
+
+## Root Cause Analysis - Phase 13 Deployment Issue
+**Issue:** Automation controls implemented in frontend and backend but not appearing in deployed UI
+**Root Cause:** Database migration not applied - automation fields don't exist in UAT database schema
+**Solution:** Apply migrations/0002_add_automation_fields.sql to add required automation fields to leads table
+**Impact:** Without automation fields in database, backend returns null/undefined values causing conditional rendering to hide controls
 
 ## Execution Log - Phase 13 Deployment
 **Executed:** September 10, 2025 20:36 UTC
