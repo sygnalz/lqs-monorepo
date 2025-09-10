@@ -189,7 +189,7 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
     // STEP 4: Assert that the required columns are present
     console.log('🏷️  STEP 4: Verify required columns are present');
     
-    const requiredColumns = ['Full Name', 'Phone Number', 'Status Badge', 'Created Date'];
+    const requiredColumns = ['Full Name', 'Phone Number', 'Status Badge', 'Created Date', 'Last Action', 'Next Action'];
     
     for (const columnName of requiredColumns) {
       const columnHeader = await page.locator('th', { hasText: columnName }).first().isVisible({ timeout: 5000 });
@@ -317,5 +317,34 @@ test.describe('Phase 12: Admin Dashboard E2E Workflow Verification', () => {
     
     console.log('✅ Prospect data structure validation complete');
     console.log('🎉 Admin Dashboard API integration verified!');
+  });
+
+  test('should display automation controls', async ({ page }) => {
+    console.log('🧪 Testing automation controls...');
+    
+    // Navigate to admin dashboard
+    await page.goto('/admin');
+    
+    // Wait for the page to load
+    await page.waitForSelector('h1:has-text("Admin Dashboard")', { timeout: 10000 });
+    
+    // Check for bulk selection checkbox in header
+    await expect(page.locator('thead input[type="checkbox"]')).toBeVisible();
+    
+    // Check for individual checkboxes in rows (if prospects exist)
+    const prospectRows = await page.locator('tbody tr').count();
+    if (prospectRows > 0) {
+      await expect(page.locator('tbody tr:first-child input[type="checkbox"]')).toBeVisible();
+      
+      // Check for kebab menu (three dots) in first row
+      await expect(page.locator('tbody tr:first-child svg')).toBeVisible();
+      
+      await page.locator('tbody tr:first-child input[type="checkbox"]').click();
+      
+      await expect(page.locator('text=selected')).toBeVisible();
+      await expect(page.locator('button:has-text("Bulk Actions")')).toBeVisible();
+    }
+    
+    console.log('✅ Automation controls test completed successfully');
   });
 });

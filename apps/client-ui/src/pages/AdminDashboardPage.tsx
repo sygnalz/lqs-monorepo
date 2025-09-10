@@ -25,6 +25,10 @@ const AdminDashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
+  const [selectedProspects, setSelectedProspects] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState<boolean>(false);
+  const [isPerformingAction, setIsPerformingAction] = useState<boolean>(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -211,6 +215,112 @@ const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // Format action display
+  const formatAction = (actionType: string | null | undefined, timestamp: string | null | undefined) => {
+    if (!actionType || !timestamp) {
+      return 'N/A';
+    }
+    try {
+      const formattedDate = new Date(timestamp).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      return `${actionType} - ${formattedDate}`;
+    } catch (error) {
+      return actionType;
+    }
+  };
+
+  // Handle bulk selection
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedProspects(new Set(prospects.map((p: Lead) => p.id)));
+    } else {
+      setSelectedProspects(new Set());
+    }
+  };
+
+  const handleSelectProspect = (prospectId: string, checked: boolean) => {
+    const newSelected = new Set(selectedProspects);
+    if (checked) {
+      newSelected.add(prospectId);
+    } else {
+      newSelected.delete(prospectId);
+    }
+    setSelectedProspects(newSelected);
+  };
+
+  // Handle individual prospect actions
+  const handleProspectAction = async (prospectId: string, action: 'pause' | 'resume' | 'review-bin') => {
+    setIsPerformingAction(true);
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.post(`${API_URL}/leads/${prospectId}/${action}`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        await fetchAdminData();
+        setOpenDropdown(null);
+      } else {
+        throw new Error(response.data.message || 'Action failed');
+      }
+    } catch (err: any) {
+      console.error('Action failed:', err);
+      setError(err.response?.data?.message || err.message || 'Action failed');
+    } finally {
+      setIsPerformingAction(false);
+    }
+  };
+
+  // Handle bulk actions
+  const handleBulkAction = async (action: 'pause' | 'resume' | 'review-bin') => {
+    if (selectedProspects.size === 0) {
+      setError('No prospects selected');
+      return;
+    }
+
+    setIsPerformingAction(true);
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.post(`${API_URL}/leads/bulk-action`, {
+        action,
+        leadIds: Array.from(selectedProspects)
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        await fetchAdminData();
+        setSelectedProspects(new Set());
+        setShowBulkActions(false);
+      } else {
+        throw new Error(response.data.message || 'Bulk action failed');
+      }
+    } catch (err: any) {
+      console.error('Bulk action failed:', err);
+      setError(err.response?.data?.message || err.message || 'Bulk action failed');
+    } finally {
+      setIsPerformingAction(false);
+    }
+  };
+
   // Handle sorting
   const handleSort = (key: 'name' | 'created_at') => {
     let direction: SortDirection = 'asc';
@@ -293,6 +403,51 @@ const AdminDashboardPage: React.FC = () => {
                     </p>
                   )}
                 </div>
+                <div className="flex items-center space-x-4">
+                  {selectedProspects.size > 0 && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">
+                        {selectedProspects.size} selected
+                      </span>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowBulkActions(!showBulkActions)}
+                          className="px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                          disabled={isPerformingAction}
+                        >
+                          Bulk Actions ▼
+                        </button>
+                        {showBulkActions && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleBulkAction('pause')}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                disabled={isPerformingAction}
+                              >
+                                Pause Automation
+                              </button>
+                              <button
+                                onClick={() => handleBulkAction('resume')}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                disabled={isPerformingAction}
+                              >
+                                Resume Automation
+                              </button>
+                              <button
+                                onClick={() => handleBulkAction('review-bin')}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                disabled={isPerformingAction}
+                              >
+                                Move to Review Bin
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Loading State */}
@@ -341,6 +496,14 @@ const AdminDashboardPage: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-300">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <input
+                            type="checkbox"
+                            checked={selectedProspects.size === prospects.length && prospects.length > 0}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          />
+                        </th>
                         <th 
                           scope="col" 
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -363,11 +526,28 @@ const AdminDashboardPage: React.FC = () => {
                           Created Date
                           {renderSortIcon('created_at')}
                         </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Last Action
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Next Action
+                        </th>
+                        <th scope="col" className="relative px-6 py-3">
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {sortedProspects.map((prospect) => (
                         <tr key={prospect.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedProspects.has(prospect.id)}
+                              onChange={(e) => handleSelectProspect(prospect.id, e.target.checked)}
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            />
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             <button
                               onClick={() => handleProspectClick(prospect.id)}
@@ -386,6 +566,64 @@ const AdminDashboardPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(prospect.created_at)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatAction(prospect.last_action_type, prospect.last_action_timestamp)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatAction(prospect.next_action_type, prospect.next_action_scheduled)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => navigate(`/prospect/${prospect.id}`)}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                View
+                              </button>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setOpenDropdown(openDropdown === prospect.id ? null : prospect.id)}
+                                  className="text-gray-400 hover:text-gray-600 p-1"
+                                  disabled={isPerformingAction}
+                                >
+                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                  </svg>
+                                </button>
+                                {openDropdown === prospect.id && (
+                                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                    <div className="py-1">
+                                      {prospect.automation_status !== 'paused' && (
+                                        <button
+                                          onClick={() => handleProspectAction(prospect.id, 'pause')}
+                                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          disabled={isPerformingAction}
+                                        >
+                                          Pause Automation
+                                        </button>
+                                      )}
+                                      {prospect.automation_status === 'paused' && (
+                                        <button
+                                          onClick={() => handleProspectAction(prospect.id, 'resume')}
+                                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          disabled={isPerformingAction}
+                                        >
+                                          Resume Automation
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleProspectAction(prospect.id, 'review-bin')}
+                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        disabled={isPerformingAction}
+                                      >
+                                        Move to Review Bin
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))}

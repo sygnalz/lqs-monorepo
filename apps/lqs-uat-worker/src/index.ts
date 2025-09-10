@@ -373,7 +373,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
 
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
-      .select('*')
+      .select('*, last_action_type, last_action_timestamp, next_action_type, next_action_scheduled, automation_status, automation_notes')
       .eq('company_id', profile.company_id)
       .order('created_at', { ascending: false })
 
@@ -411,6 +411,279 @@ app.get('/', (c) => {
       'GET /api/leads/:id'
     ]
   })
+})
+
+// Pause lead automation endpoint
+app.post('/api/leads/:id/pause', authenticateJWT, async (c) => {
+  try {
+    const leadId = c.req.param('id')
+    const user = c.get('user')
+    
+    if (!leadId) {
+      return c.json({
+        success: false,
+        message: 'Lead ID is required'
+      }, 400)
+    }
+
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: leadData, error: leadError } = await supabase
+      .from('leads')
+      .update({ 
+        automation_status: 'paused',
+        automation_notes: 'Paused by user'
+      })
+      .eq('id', leadId)
+      .eq('company_id', profile.company_id)
+      .select()
+      .single()
+
+    if (leadError || !leadData) {
+      return c.json({
+        success: false,
+        message: 'Lead not found or access denied'
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Lead automation paused successfully',
+      data: leadData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+// Resume lead automation endpoint
+app.post('/api/leads/:id/resume', authenticateJWT, async (c) => {
+  try {
+    const leadId = c.req.param('id')
+    const user = c.get('user')
+    
+    if (!leadId) {
+      return c.json({
+        success: false,
+        message: 'Lead ID is required'
+      }, 400)
+    }
+
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: leadData, error: leadError } = await supabase
+      .from('leads')
+      .update({ 
+        automation_status: 'active',
+        automation_notes: 'Resumed by user'
+      })
+      .eq('id', leadId)
+      .eq('company_id', profile.company_id)
+      .select()
+      .single()
+
+    if (leadError || !leadData) {
+      return c.json({
+        success: false,
+        message: 'Lead not found or access denied'
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Lead automation resumed successfully',
+      data: leadData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+// Move lead to review bin endpoint
+app.post('/api/leads/:id/review-bin', authenticateJWT, async (c) => {
+  try {
+    const leadId = c.req.param('id')
+    const user = c.get('user')
+    
+    if (!leadId) {
+      return c.json({
+        success: false,
+        message: 'Lead ID is required'
+      }, 400)
+    }
+
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: leadData, error: leadError } = await supabase
+      .from('leads')
+      .update({ 
+        automation_status: 'review_bin',
+        automation_notes: 'Moved to review bin by user'
+      })
+      .eq('id', leadId)
+      .eq('company_id', profile.company_id)
+      .select()
+      .single()
+
+    if (leadError || !leadData) {
+      return c.json({
+        success: false,
+        message: 'Lead not found or access denied'
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Lead moved to review bin successfully',
+      data: leadData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+app.post('/api/leads/bulk-action', authenticateJWT, async (c) => {
+  try {
+    const { action, leadIds } = await c.req.json()
+    const user = c.get('user')
+    
+    if (!action || !leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return c.json({
+        success: false,
+        message: 'Action and leadIds array are required'
+      }, 400)
+    }
+
+    if (!['pause', 'resume', 'review-bin'].includes(action)) {
+      return c.json({
+        success: false,
+        message: 'Invalid action. Must be pause, resume, or review-bin'
+      }, 400)
+    }
+
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    let updateData = {}
+    let actionMessage = ''
+
+    switch (action) {
+      case 'pause':
+        updateData = { 
+          automation_status: 'paused',
+          automation_notes: 'Bulk paused by user'
+        }
+        actionMessage = 'paused'
+        break
+      case 'resume':
+        updateData = { 
+          automation_status: 'active',
+          automation_notes: 'Bulk resumed by user'
+        }
+        actionMessage = 'resumed'
+        break
+      case 'review-bin':
+        updateData = { 
+          automation_status: 'review_bin',
+          automation_notes: 'Bulk moved to review bin by user'
+        }
+        actionMessage = 'moved to review bin'
+        break
+    }
+
+    const { data: updatedLeads, error: updateError } = await supabase
+      .from('leads')
+      .update(updateData)
+      .in('id', leadIds)
+      .eq('company_id', profile.company_id)
+      .select()
+
+    if (updateError) {
+      return c.json({
+        success: false,
+        message: 'Failed to update leads'
+      }, 500)
+    }
+
+    return c.json({
+      success: true,
+      message: `${updatedLeads.length} leads ${actionMessage} successfully`,
+      data: updatedLeads
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
 })
 
 export default app
