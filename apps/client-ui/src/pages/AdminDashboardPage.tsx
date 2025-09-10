@@ -391,6 +391,19 @@ const AdminDashboardPage: React.FC = () => {
       </nav>
 
       <main>
+        {/* DEBUG SECTION - Environment Variables */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">🔧 Debug Information</h3>
+            <div className="text-sm text-yellow-700">
+              <p><strong>API_URL:</strong> {API_URL}</p>
+              <p><strong>Environment:</strong> {(import.meta as any).env?.MODE || 'unknown'}</p>
+              <p><strong>VITE_API_URL:</strong> {(import.meta as any).env?.VITE_API_URL || 'not set'}</p>
+              <p><strong>Base URL:</strong> {(import.meta as any).env?.BASE_URL || 'not set'}</p>
+            </div>
+          </div>
+        </div>
+        
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <div className="bg-white shadow rounded-lg p-6">
