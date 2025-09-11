@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
+const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 const UAT_BASE_URL = 'https://762ff952.lqs-main-security-fix-uat.pages.dev';
 
 const generateTestUser = () => ({
@@ -38,7 +38,7 @@ async function testAutomationEndpoints() {
       throw new Error('Failed to sign in: ' + signinResponse.data.error);
     }
     
-    const authToken = signinResponse.data.data.token;
+    const authToken = signinResponse.data.data.session.access_token;
     console.log('✅ Successfully signed in and obtained auth token');
     
     console.log('📝 Step 3: Creating test client...');
@@ -199,7 +199,7 @@ async function testAutomationEndpoints() {
       password: unauthorizedUser.password
     });
     
-    const unauthorizedToken = unauthorizedSigninResponse.data.data.token;
+    const unauthorizedToken = unauthorizedSigninResponse.data.data.session.access_token;
     
     try {
       await axios.post(`${API_BASE_URL}/leads/${leadId}/pause`, {}, {
