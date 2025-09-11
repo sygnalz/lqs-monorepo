@@ -392,29 +392,46 @@ const ClientDetailPage: React.FC = () => {
   };
 
   // Handle delete client
-  const handleDeleteClient = useCallback(async () => {
-    if (!client?.id) return;
+  const handleDeleteClient = useCallback(async (e?: React.MouseEvent) => {
+    console.log('🗑️ [DELETE_CLIENT] Handler called, client ID:', client?.id);
     
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('🗑️ [DELETE_CLIENT] Event prevented and stopped');
+    }
+    
+    if (!client?.id) {
+      console.log('❌ [DELETE_CLIENT] No client ID, returning');
+      return;
+    }
+    
+    console.log('🗑️ [DELETE_CLIENT] Setting deleting state to true');
     setIsDeleting(true);
     setError(null);
     
     const token = authService.getAuthToken();
     if (!token) {
+      console.log('❌ [DELETE_CLIENT] No auth token found');
       setError('No authentication token found. Please sign in again.');
       setIsDeleting(false);
       return;
     }
 
     try {
+      console.log('🗑️ [DELETE_CLIENT] Making DELETE request to:', `${API_URL}/clients/${client.id}`);
       await axios.delete(`${API_URL}/clients/${client.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      console.log('✅ [DELETE_CLIENT] Delete request successful, navigating to dashboard');
       navigate('/dashboard');
     } catch (err: any) {
+      console.log('❌ [DELETE_CLIENT] Delete request failed:', err);
       if (err?.response?.status === 404) {
+        console.log('🗑️ [DELETE_CLIENT] 404 response, navigating to dashboard anyway');
         navigate('/dashboard');
         return;
       }
@@ -1230,7 +1247,10 @@ const ClientDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDeleteClient}
+                  onClick={(e) => {
+                    console.log('🖱️ [MODAL_BUTTON] Delete button clicked');
+                    handleDeleteClient(e);
+                  }}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
