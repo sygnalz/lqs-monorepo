@@ -1207,10 +1207,20 @@ const ClientDetailPage: React.FC = () => {
       </main>
 
       {showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+        <div 
+          className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDeleteConfirmation(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                 <svg
                   className="h-6 w-6 text-red-600"
                   fill="none"
@@ -1225,20 +1235,20 @@ const ClientDetailPage: React.FC = () => {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
                 Delete Client
               </h3>
-              <div className="mt-2 px-7 py-3">
+              <div className="mb-6">
                 <p className="text-sm text-gray-500">
                   Are you sure you want to delete "{client?.name}"? This will permanently delete the client and all associated leads. This action cannot be undone.
                 </p>
               </div>
-              <div className="items-center px-4 py-3">
+              <div className="flex justify-center space-x-3">
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirmation(false)}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-24 mr-2 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed relative z-10"
                 >
                   Cancel
                 </button>
@@ -1246,7 +1256,7 @@ const ClientDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center relative z-10"
                 >
                   {isDeleting && (
                     <div className="w-4 h-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -60,10 +60,7 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     await expect(page.locator('text=This will permanently delete the client and all associated leads')).toBeVisible();
     console.log('✅ Step 5: Delete confirmation modal appeared with correct warning');
     
-    await page.evaluate(() => {
-      const cancelButton = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.trim() === 'Cancel');
-      if (cancelButton) cancelButton.click();
-    });
+    await page.click('.fixed button:has-text("Cancel")');
     await expect(page.locator('text=Are you sure you want to delete')).not.toBeVisible();
     console.log('✅ Step 6: Cancel button works correctly');
     
@@ -71,18 +68,8 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     
     await page.waitForSelector('.fixed button:has-text("Delete")', { timeout: 5000 });
     
-    await page.evaluate(() => {
-      const deleteButton = Array.from(document.querySelectorAll('button')).find(btn => 
-        btn.textContent.trim() === 'Delete' && btn.closest('.fixed')
-      );
-      if (deleteButton) {
-        console.log('🖱️ [E2E_TEST] Found modal delete button, triggering click');
-        deleteButton.click();
-      } else {
-        console.log('❌ [E2E_TEST] Modal delete button not found');
-      }
-    });
-    console.log('✅ Step 7: Confirmed client deletion via JavaScript click');
+    await page.click('.fixed button:has-text("Delete")');
+    console.log('✅ Step 7: Confirmed client deletion via standard Playwright click');
     
     await expect(page).toHaveURL(/.*\/dashboard/, { timeout: 15000 });
     console.log('✅ Step 8: Successfully redirected to dashboard after deletion');
