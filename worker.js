@@ -839,6 +839,9 @@ export default {
     
     // DELETE /api/clients/:id endpoint (protected) - Delete client with cascading delete
     if (url.pathname.startsWith('/api/clients/') && url.pathname.split('/').length === 4 && request.method === 'DELETE') {
+      console.log('🗑️ [DELETE_ENDPOINT] URL pathname:', url.pathname);
+      console.log('🗑️ [DELETE_ENDPOINT] Split parts:', url.pathname.split('/'));
+      console.log('🗑️ [DELETE_ENDPOINT] Split length:', url.pathname.split('/').length);
       try {
         // Extract client ID from path
         const clientId = url.pathname.split('/api/clients/')[1];

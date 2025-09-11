@@ -18,7 +18,7 @@ const ClientDetailPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Leads state management
@@ -386,65 +386,55 @@ const ClientDetailPage: React.FC = () => {
     navigate(`/clients/${id}/leads/new`);
   };
 
-  // Handle delete client
-  const handleDeleteClient = async () => {
-    if (!client?.id) return;
+  // Handle show delete confirmation
+  const handleShowDeleteConfirmation = () => {
+    setShowDeleteConfirmation(true);
+  };
+
+  // Handle delete client confirmation
+  const handleConfirmDelete = async () => {
+    console.log('🗑️ [DELETE_CLIENT] Confirm delete called, client ID:', client?.id);
+    console.log('🗑️ [DELETE_CLIENT] Function triggered successfully!');
     
+    if (!client?.id) {
+      console.log('❌ [DELETE_CLIENT] No client ID, returning');
+      return;
+    }
+    
+    console.log('🗑️ [DELETE_CLIENT] Setting deleting state to true');
     setIsDeleting(true);
     setError(null);
+    
+    const token = authService.getAuthToken();
+    if (!token) {
+      console.log('❌ [DELETE_CLIENT] No auth token found');
+      setError('No authentication token found. Please sign in again.');
+      setIsDeleting(false);
+      return;
+    }
 
     try {
-      const token = authService.getAuthToken();
-      if (!token) {
-        throw new Error('No authentication token found. Please sign in again.');
-      }
-
-      console.log(`🗑️ [CLIENT_DELETE] Deleting client with ID: ${client.id}`);
-      
-      const response = await axios.delete(`${API_URL}/clients/${client.id}`, {
+      console.log('🗑️ [DELETE_CLIENT] Making DELETE request to:', `${API_URL}/clients/${client.id}`);
+      await axios.delete(`${API_URL}/clients/${client.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-
-      console.log('🗑️ [CLIENT_DELETE] Delete successful!');
-      console.log('🗑️ [CLIENT_DELETE] Response:', response.data);
-
+      console.log('✅ [DELETE_CLIENT] Delete request successful, navigating to dashboard');
+      setShowDeleteConfirmation(false);
       navigate('/dashboard');
-
     } catch (err: any) {
-      console.error('🗑️ [CLIENT_DELETE] Failed to delete client:', err);
-
-      // Handle 404 as success case - client was already deleted or doesn't exist
+      console.log('❌ [DELETE_CLIENT] Delete request failed:', err);
       if (err?.response?.status === 404) {
-        console.log('🗑️ [CLIENT_DELETE] Client not found (404) - treating as successful deletion');
+        console.log('🗑️ [DELETE_CLIENT] 404 response, navigating to dashboard anyway');
+        setShowDeleteConfirmation(false);
         navigate('/dashboard');
         return;
       }
-
-      let errorMessage = 'Failed to delete client. Please try again.';
-
-      if (err?.response) {
-        if (err.response.status === 401) {
-          errorMessage = 'Authentication failed. Please sign in again.';
-        } else if (err.response.status === 403) {
-          errorMessage = 'Access denied: You do not have permission to delete this client.';
-        } else if (err.response.data?.error) {
-          errorMessage = err.response.data.error;
-        } else {
-          errorMessage = `HTTP ${err.response.status}: ${err.response.statusText}`;
-        }
-      } else if (err?.request) {
-        errorMessage = 'Network error: Unable to connect to server.';
-      } else if (err?.message) {
-        errorMessage = err.message;
-      }
-
-      setError(errorMessage);
-    } finally {
+      setError('Failed to delete client. Please try again.');
       setIsDeleting(false);
-      setShowDeleteModal(false);
+      setShowDeleteConfirmation(false);
     }
   };
 
@@ -668,7 +658,7 @@ const ClientDetailPage: React.FC = () => {
                     Edit Client
                   </button>
                   <button
-                    onClick={() => setShowDeleteModal(true)}
+                    onClick={handleShowDeleteConfirmation}
                     className="px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
                   >
                     Delete Client
@@ -1216,9 +1206,9 @@ const ClientDetailPage: React.FC = () => {
         </div>
       </main>
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      {showDeleteConfirmation && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3 text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                 <svg
@@ -1226,7 +1216,6 @@ const ClientDetailPage: React.FC = () => {
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -1245,25 +1234,25 @@ const ClientDetailPage: React.FC = () => {
                 </p>
               </div>
               <div className="items-center px-4 py-3">
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowDeleteModal(false)}
-                    disabled={isDeleting}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteClient}
-                    disabled={isDeleting}
-                    className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {isDeleting && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    )}
-                    {isDeleting ? 'Deleting...' : 'Delete Client'}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirmation(false)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-24 mr-2 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isDeleting && (
+                    <div className="w-4 h-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
               </div>
             </div>
           </div>
