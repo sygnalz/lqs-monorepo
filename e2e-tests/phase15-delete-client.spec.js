@@ -70,6 +70,10 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     await page.click('button:has-text("Delete Client")');
     
     await page.waitForSelector('.fixed button:has-text("Delete")', { timeout: 5000 });
+    
+    await page.locator('.fixed button:has-text("Delete")').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500); // Brief pause for scroll to complete
+    
     await page.click('.fixed button:has-text("Delete")');
     console.log('✅ Step 7: Confirmed client deletion via Playwright native click');
     
