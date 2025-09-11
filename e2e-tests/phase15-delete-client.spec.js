@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const UAT_BASE_URL = 'http://localhost:5173';
+const UAT_BASE_URL = 'https://762ff952.lqs-main-security-fix-uat.pages.dev';
 const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 const generateTestUser = () => ({
