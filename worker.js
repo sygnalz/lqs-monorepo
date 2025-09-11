@@ -529,45 +529,20 @@ export default {
       }
     }
     
-    // GET /api/clients endpoint (protected) - List ALL clients (admin view)
+    // GET /api/clients endpoint (protected) - List clients for the authenticated user's company
     if (url.pathname === '/api/clients' && request.method === 'GET') {
       try {
-        // Extract and validate JWT token
-        const authHeader = request.headers.get('Authorization');
-        if (!authHeader) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Authorization token required'
-          }), {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
         }
         
-        const token = authHeader.replace(/^bearer\s+/i, '').trim();
+        const { profile } = authResult;
+        const companyId = profile.company_id;
         
-        // Validate JWT token (basic validation)
-        try {
-          getJWTPayload(token);
-        } catch (jwtError) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Invalid authorization token'
-          }), {
-            status: 401,
-            headers: {
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // [CRITICAL IMPLEMENTATION] Fetch ALL clients (admin view per directive)
-        // Do not filter by company_id as all users are admins with universal visibility
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?select=*`, {
+        // Filter clients by company_id for multi-tenant security
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
