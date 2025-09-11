@@ -1241,8 +1241,10 @@ const ClientDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    console.log('🖱️ [MODAL_BUTTON] Delete button clicked');
+                  onClick={function(e) {
+                    console.log('🖱️ [MODAL_BUTTON] Delete button clicked via function declaration');
+                    e.preventDefault();
+                    e.stopPropagation();
                     handleDeleteClient();
                   }}
                   disabled={isDeleting}
