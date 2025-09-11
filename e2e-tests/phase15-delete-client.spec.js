@@ -69,17 +69,9 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     
     await page.click('button:has-text("Delete Client")');
     
-    await page.evaluate(() => {
-      const deleteButtons = Array.from(document.querySelectorAll('button')).filter(btn => btn.textContent.includes('Delete Client'));
-      const modalDeleteButton = deleteButtons.find(btn => btn.closest('.fixed'));
-      if (modalDeleteButton) {
-        console.log('🗑️ Triggering delete button click via JavaScript');
-        modalDeleteButton.click();
-      } else {
-        console.error('❌ Modal delete button not found');
-      }
-    });
-    console.log('✅ Step 7: Confirmed client deletion');
+    await page.waitForSelector('.fixed button:has-text("Delete")', { timeout: 5000 });
+    await page.click('.fixed button:has-text("Delete")');
+    console.log('✅ Step 7: Confirmed client deletion via Playwright native click');
     
     await expect(page).toHaveURL(/.*\/dashboard/, { timeout: 15000 });
     console.log('✅ Step 8: Successfully redirected to dashboard after deletion');

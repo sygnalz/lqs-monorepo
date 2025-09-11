@@ -394,6 +394,7 @@ const ClientDetailPage: React.FC = () => {
   // Handle delete client confirmation
   const handleConfirmDelete = async () => {
     console.log('🗑️ [DELETE_CLIENT] Confirm delete called, client ID:', client?.id);
+    console.log('🗑️ [DELETE_CLIENT] Function triggered successfully!');
     
     if (!client?.id) {
       console.log('❌ [DELETE_CLIENT] No client ID, returning');
