@@ -18,6 +18,8 @@ const ClientDetailPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Leads state management
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -384,6 +386,68 @@ const ClientDetailPage: React.FC = () => {
     navigate(`/clients/${id}/leads/new`);
   };
 
+  // Handle delete client
+  const handleDeleteClient = async () => {
+    if (!client?.id) return;
+    
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const token = authService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      console.log(`🗑️ [CLIENT_DELETE] Deleting client with ID: ${client.id}`);
+      
+      const response = await axios.delete(`${API_URL}/clients/${client.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🗑️ [CLIENT_DELETE] Delete successful!');
+      console.log('🗑️ [CLIENT_DELETE] Response:', response.data);
+
+      navigate('/dashboard');
+
+    } catch (err: any) {
+      console.error('🗑️ [CLIENT_DELETE] Failed to delete client:', err);
+
+      // Handle 404 as success case - client was already deleted or doesn't exist
+      if (err?.response?.status === 404) {
+        console.log('🗑️ [CLIENT_DELETE] Client not found (404) - treating as successful deletion');
+        navigate('/dashboard');
+        return;
+      }
+
+      let errorMessage = 'Failed to delete client. Please try again.';
+
+      if (err?.response) {
+        if (err.response.status === 401) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else if (err.response.status === 403) {
+          errorMessage = 'Access denied: You do not have permission to delete this client.';
+        } else if (err.response.data?.error) {
+          errorMessage = err.response.data.error;
+        } else {
+          errorMessage = `HTTP ${err.response.status}: ${err.response.statusText}`;
+        }
+      } else if (err?.request) {
+        errorMessage = 'Network error: Unable to connect to server.';
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   // Handle showing add tag UI for a specific lead
   const handleShowAddTag = (leadId: string) => {
     setAddingTagForLead(leadId);
@@ -596,12 +660,20 @@ const ClientDetailPage: React.FC = () => {
             </div>
             <div className="flex items-center space-x-3">
               {!isEditing && (
-                <button
-                  onClick={handleEditToggle}
-                  className="px-3 py-2 border border-indigo-300 text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
-                >
-                  Edit Client
-                </button>
+                <>
+                  <button
+                    onClick={handleEditToggle}
+                    className="px-3 py-2 border border-indigo-300 text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                  >
+                    Edit Client
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100"
+                  >
+                    Delete Client
+                  </button>
+                </>
               )}
               <button
                 onClick={handleBackToDashboard}
@@ -1143,6 +1215,60 @@ const ClientDetailPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+          <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3 text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg
+                  className="h-6 w-6 text-red-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mt-4">
+                Delete Client
+              </h3>
+              <div className="mt-2 px-7 py-3">
+                <p className="text-sm text-gray-500">
+                  Are you sure you want to delete "{client?.name}"? This will permanently delete the client and all associated leads. This action cannot be undone.
+                </p>
+              </div>
+              <div className="items-center px-4 py-3">
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteClient}
+                    disabled={isDeleting}
+                    className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isDeleting && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    )}
+                    {isDeleting ? 'Deleting...' : 'Delete Client'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

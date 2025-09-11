@@ -837,6 +837,122 @@ export default {
       }
     }
     
+    // DELETE /api/clients/:id endpoint (protected) - Delete client with cascading delete
+    if (url.pathname.startsWith('/api/clients/') && url.pathname.split('/').length === 4 && request.method === 'DELETE') {
+      try {
+        // Extract client ID from path
+        const clientId = url.pathname.split('/api/clients/')[1];
+        if (!clientId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // First, verify that the client exists and belongs to the user's company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const clientData = await clientResponse.json();
+        
+        // Check if client was found (validates both ID existence and company ownership)
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Client not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Execute DELETE operation - the CASCADE DELETE constraint will automatically delete associated leads
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          const errorData = await deleteResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete client: ' + errorData
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Return successful response
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Client and all associated leads deleted successfully'
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // POST /api/clients/:clientId/leads endpoint (protected) - Create new lead for specific client
     if (url.pathname.match(/^\/api\/clients\/[^\/]+\/leads$/) && request.method === 'POST') {
       try {
