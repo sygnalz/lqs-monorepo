@@ -392,14 +392,8 @@ const ClientDetailPage: React.FC = () => {
   };
 
   // Handle delete client
-  const handleDeleteClient = useCallback(async (e?: React.MouseEvent) => {
+  const handleDeleteClient = async () => {
     console.log('🗑️ [DELETE_CLIENT] Handler called, client ID:', client?.id);
-    
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('🗑️ [DELETE_CLIENT] Event prevented and stopped');
-    }
     
     if (!client?.id) {
       console.log('❌ [DELETE_CLIENT] No client ID, returning');
@@ -439,7 +433,7 @@ const ClientDetailPage: React.FC = () => {
       setIsDeleting(false);
       setShowDeleteConfirmation(false);
     }
-  }, [client?.id, navigate]);
+  };
 
   // Handle showing add tag UI for a specific lead
   const handleShowAddTag = (leadId: string) => {
@@ -1247,9 +1241,9 @@ const ClientDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={(e) => {
+                  onClick={() => {
                     console.log('🖱️ [MODAL_BUTTON] Delete button clicked');
-                    handleDeleteClient(e);
+                    handleDeleteClient();
                   }}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
