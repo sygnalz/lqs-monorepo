@@ -10,4 +10,10 @@ export interface Lead {
   notes: string | null;
   client_id: string;
   tags: Tag[];
+  last_action_type?: string | null;
+  last_action_timestamp?: string | null;
+  next_action_type?: string | null;
+  next_action_scheduled?: string | null;
+  automation_status?: string;
+  automation_notes?: string | null;
 }
