@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const UAT_BASE_URL = 'http://localhost:5173';
-const API_BASE_URL = 'http://localhost:8787';
+const API_BASE_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 const generateTestUser = (companyName) => ({
   email: `security-test-${Date.now()}-${Math.random().toString(36).substring(7)}@lqs-uat.com`,
