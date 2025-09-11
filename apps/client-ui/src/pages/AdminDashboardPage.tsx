@@ -130,6 +130,7 @@ const AdminDashboardPage: React.FC = () => {
       });
 
       setProspects(leadsArray);
+      setIsLoading(false);
 
     } catch (err: any) {
       console.error("🏢 [ADMIN DASHBOARD] Failed to fetch admin data:");
@@ -176,7 +177,7 @@ const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchAdminData();
-  }, [fetchAdminData, logout, navigate]);
+  }, [logout, navigate]);
 
   const handleProspectAction = async (prospectId: string, action: string) => {
     try {
