@@ -176,7 +176,7 @@ const AdminDashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchAdminData();
-  }, [logout, navigate]);
+  }, [fetchAdminData, logout, navigate]);
 
   const handleProspectAction = async (prospectId: string, action: string) => {
     try {
