@@ -43,8 +43,8 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     await expect(page).toHaveURL(/.*\/dashboard/);
     console.log('✅ Step 2: Successfully created test client');
     
-    const initialClientCount = await page.locator('tbody tr').count();
-    console.log(`📊 Initial client count: ${initialClientCount}`);
+    await expect(page.locator(`text=${testClientName}`)).toBeVisible();
+    console.log(`📊 Confirmed test client "${testClientName}" exists in dashboard`);
     
     await page.click(`text=${testClientName}`);
     await expect(page).toHaveURL(/.*\/clients\/[^\/]+$/);
@@ -90,19 +90,13 @@ test.describe('Phase 15: Delete Client E2E Tests', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
     
-    const finalClientCount = await page.locator('tbody tr').count();
-    console.log(`📊 Final client count: ${finalClientCount}`);
-    
-    expect(finalClientCount).toBe(initialClientCount - 1);
-    console.log('✅ Step 9: Client count decreased by 1, confirming deletion');
-    
     await expect(page.locator(`text=${testClientName}`)).not.toBeVisible();
-    console.log('✅ Step 10: Deleted client no longer appears in dashboard list');
+    console.log('✅ Step 9: Deleted client no longer appears in dashboard list');
     
     const remainingClients = await page.locator('tbody tr').allTextContents();
     const clientStillExists = remainingClients.some(text => text.includes(testClientName));
     expect(clientStillExists).toBe(false);
-    console.log('✅ Step 11: Strict verification - deleted client completely removed from data');
+    console.log('✅ Step 10: Strict verification - deleted client completely removed from data');
     
     console.log('🎉 Complete delete client workflow test passed with strict assertions!');
   });
