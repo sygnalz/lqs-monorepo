@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { Client } from '../types/client';
@@ -390,6 +390,39 @@ const ClientDetailPage: React.FC = () => {
   const handleShowDeleteConfirmation = () => {
     setShowDeleteConfirmation(true);
   };
+
+  // Handle delete client
+  const handleDeleteClient = useCallback(async () => {
+    if (!client?.id) return;
+    
+    setIsDeleting(true);
+    setError(null);
+    
+    const token = authService.getAuthToken();
+    if (!token) {
+      setError('No authentication token found. Please sign in again.');
+      setIsDeleting(false);
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_URL}/clients/${client.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        navigate('/dashboard');
+        return;
+      }
+      setError('Failed to delete client. Please try again.');
+      setIsDeleting(false);
+      setShowDeleteConfirmation(false);
+    }
+  }, [client?.id, navigate]);
 
   // Handle showing add tag UI for a specific lead
   const handleShowAddTag = (leadId: string) => {
@@ -1197,35 +1230,7 @@ const ClientDetailPage: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!client?.id) return;
-                    setIsDeleting(true);
-                    setError(null);
-                    
-                    const token = authService.getAuthToken();
-                    if (!token) {
-                      setError('No authentication token found. Please sign in again.');
-                      setIsDeleting(false);
-                      return;
-                    }
-
-                    axios.delete(`${API_URL}/clients/${client.id}`, {
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                      }
-                    }).then(() => {
-                      navigate('/dashboard');
-                    }).catch((err) => {
-                      if (err?.response?.status === 404) {
-                        navigate('/dashboard');
-                        return;
-                      }
-                      setError('Failed to delete client. Please try again.');
-                      setIsDeleting(false);
-                      setShowDeleteConfirmation(false);
-                    });
-                  }}
+                  onClick={handleDeleteClient}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-24 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
