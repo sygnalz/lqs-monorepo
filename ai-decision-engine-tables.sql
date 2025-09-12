@@ -156,7 +156,7 @@ CREATE POLICY "Users can read tags_taxonomy" ON public.tags_taxonomy FOR SELECT 
 CREATE POLICY "Users can access prospect_tags for their client" ON public.prospect_tags FOR ALL USING (
     prospect_id IN (
         SELECT l.id FROM public.leads l
-        JOIN public.companies c ON l.company_id = c.id
+        JOIN public.clients c ON l.client_id = c.id
         JOIN public.profiles p ON p.client_id = c.id
         WHERE p.id = auth.uid()
     )

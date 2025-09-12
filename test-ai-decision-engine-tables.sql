@@ -43,11 +43,7 @@ BEGIN
     SELECT id INTO test_client_id FROM public.clients LIMIT 1;
     
     IF test_client_id IS NOT NULL THEN
-        SELECT id INTO test_lead_id FROM public.leads WHERE company_id = (
-            SELECT id FROM public.companies WHERE id = (
-                SELECT company_id FROM public.clients WHERE id = test_client_id
-            )
-        ) LIMIT 1;
+        SELECT id INTO test_lead_id FROM public.leads WHERE client_id = test_client_id LIMIT 1;
         
         IF test_lead_id IS NOT NULL THEN
             INSERT INTO public.playbooks (client_id, name, goal_description, ai_instructions_and_persona)
