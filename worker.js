@@ -267,6 +267,120 @@ async function getAuthenticatedProfile(request, env) {
   return { profile: profileData[0] };
 }
 
+async function aggregateProspectContext(prospectId, authProfile, env) {
+  try {
+    const companyId = authProfile.company_id;
+    
+    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,company_id)`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!prospectResponse.ok) {
+      throw new Error('Failed to fetch prospect data');
+    }
+    
+    const prospectData = await prospectResponse.json();
+    if (!prospectData || prospectData.length === 0) {
+      throw new Error('Prospect not found');
+    }
+    
+    const prospect = prospectData[0];
+    
+    if (prospect.clients.company_id !== companyId) {
+      throw new Error('Access denied: Prospect does not belong to your company');
+    }
+    
+    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const tagsData = tagsResponse.ok ? await tagsResponse.json() : [];
+    
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    let communicationsData = [];
+    if (communicationsResponse.ok) {
+      try {
+        const responseData = await communicationsResponse.json();
+        communicationsData = Array.isArray(responseData) ? responseData : [];
+      } catch (error) {
+        communicationsData = [];
+      }
+    }
+    
+    const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const initiativeData = initiativeProspectResponse.ok ? await initiativeProspectResponse.json() : [];
+    
+    const context = {
+      prospect: {
+        id: prospect.id,
+        first_name: prospect.name ? prospect.name.split(' ')[0] : '',
+        last_name: prospect.name ? prospect.name.split(' ').slice(1).join(' ') : '',
+        phone_e164: prospect.phone || '',
+        email: prospect.email || '',
+        timezone: '',
+        consent_status: '',
+        path_hint: prospect.notes || ''
+      },
+      tags: tagsData.map(tag => ({
+        tag: tag.tag,
+        definition: tag.tags_taxonomy?.definition || '',
+        applied_at: tag.applied_at
+      })),
+      communications: communicationsData.map(comm => ({
+        type: comm.type?.toUpperCase() || 'SMS',
+        direction: 'OUTBOUND',
+        content: comm.content || '',
+        timestamp: comm.created_at,
+        external_id: comm.external_id || ''
+      })),
+      playbook: initiativeData.length > 0 && initiativeData[0].initiatives?.playbooks ? {
+        name: initiativeData[0].initiatives.playbooks.name || '',
+        goal_description: initiativeData[0].initiatives.playbooks.goal_description || '',
+        ai_instructions_and_persona: initiativeData[0].initiatives.playbooks.ai_instructions_and_persona || '',
+        constraints: initiativeData[0].initiatives.playbooks.constraints || {}
+      } : null,
+      initiative: initiativeData.length > 0 ? {
+        name: initiativeData[0].initiatives?.name || '',
+        status: initiativeData[0].initiatives?.status || '',
+        environmental_settings: initiativeData[0].initiatives?.environmental_settings || {},
+        prospect_status: initiativeData[0].status || '',
+        contact_attempts: initiativeData[0].contact_attempts || 0
+      } : null
+    };
+    
+    return { success: true, context };
+    
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2286,8 +2400,14 @@ export default {
       }
     }
     
+
     // POST /api/ai/decide/:prospectId endpoint (protected) - AI Decision Engine for prospect communication
     if (url.pathname.match(/^\/api\/ai\/decide\/[^\/]+$/) && request.method === 'POST') {
+
+    // GET /api/ai/context/:prospectId endpoint (protected) - Aggregate prospect context for AI decision-making
+    if (url.pathname.match(/^\/api\/ai\/context\/[^\/]+$/) && request.method === 'GET') {
+
+     
       try {
         const pathParts = url.pathname.split('/');
         const prospectId = pathParts[4];
@@ -2305,10 +2425,15 @@ export default {
           });
         }
 
+
+
+        
+
         const authResult = await getAuthenticatedProfile(request, env);
         if (authResult.error) {
           return authResult.error;
         }
+
 
         const { profile } = authResult;
         const companyId = profile.company_id;
@@ -2379,12 +2504,27 @@ export default {
             error: 'Access denied: Prospect does not belong to your company'
           }), {
             status: 403,
+
+        
+        const contextResult = await aggregateProspectContext(prospectId, authResult.profile, env);
+        
+        if (!contextResult.success) {
+          const statusCode = contextResult.error.includes('not found') ? 404 : 
+                           contextResult.error.includes('Access denied') ? 403 : 500;
+          
+          return new Response(JSON.stringify({
+            success: false,
+            error: contextResult.error
+          }), {
+            status: statusCode,
+
             headers: {
               'Content-Type': 'application/json',
               'Access-Control-Allow-Origin': '*'
             }
           });
         }
+
 
         const prospectContext = await aggregateProspectContext(prospectId, env);
 
@@ -2403,6 +2543,12 @@ export default {
             }
           },
           message: 'AI decision generated successfully'
+
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: contextResult.context
+
         }), {
           status: 200,
           headers: {
@@ -2411,12 +2557,14 @@ export default {
           }
         });
 
+
       } catch (error) {
         if (error.message.includes('rate limit') || error.message.includes('timeout')) {
           return new Response(JSON.stringify({
             success: false,
             error: 'AI service temporarily unavailable. Please try again later.',
             retry_after: 60
+            
           }), {
             status: 429,
             headers: {
@@ -2430,6 +2578,13 @@ export default {
         return new Response(JSON.stringify({
           success: false,
           error: 'AI decision processing failed: ' + error.message
+
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+
         }), {
           status: 500,
           headers: {
