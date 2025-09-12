@@ -1,15 +1,15 @@
 
 ALTER TABLE leads 
-ADD COLUMN last_action_type TEXT,
-ADD COLUMN last_action_timestamp TIMESTAMPTZ,
-ADD COLUMN next_action_type TEXT,
-ADD COLUMN next_action_scheduled TIMESTAMPTZ,
-ADD COLUMN automation_status TEXT DEFAULT 'active',
-ADD COLUMN automation_notes TEXT;
+ADD COLUMN IF NOT EXISTS last_action_type TEXT,
+ADD COLUMN IF NOT EXISTS last_action_timestamp TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS next_action_type TEXT,
+ADD COLUMN IF NOT EXISTS next_action_scheduled TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS automation_status TEXT DEFAULT 'active',
+ADD COLUMN IF NOT EXISTS automation_notes TEXT;
 
-CREATE INDEX idx_leads_automation_status ON leads(automation_status);
+CREATE INDEX IF NOT EXISTS idx_leads_automation_status ON leads(automation_status);
 
-CREATE INDEX idx_leads_next_action_scheduled ON leads(next_action_scheduled);
+CREATE INDEX IF NOT EXISTS idx_leads_next_action_scheduled ON leads(next_action_scheduled);
 
 COMMENT ON COLUMN leads.last_action_type IS 'Type of the last automation action performed (pause, resume, review-bin, etc.)';
 COMMENT ON COLUMN leads.last_action_timestamp IS 'Timestamp when the last automation action was performed';
