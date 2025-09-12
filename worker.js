@@ -135,7 +135,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const tagsData = tagsResponse.ok ? await tagsResponse.json() : [];
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&select=type,recipient,subject,created_at,external_id&order=created_at.desc&limit=50`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -176,7 +176,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       communications: communicationsData.map(comm => ({
         type: comm.type?.toUpperCase() || 'SMS',
         direction: 'OUTBOUND',
-        content: comm.content || '',
+        content: comm.subject || '',
         timestamp: comm.created_at,
         external_id: comm.external_id || ''
       })),
