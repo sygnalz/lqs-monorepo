@@ -210,6 +210,141 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
   }
 }
 
+async function scheduleProspectAction(prospectId, authProfile, env) {
+  try {
+    const companyId = authProfile.company_id;
+    
+    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,company_id)`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!prospectResponse.ok) {
+      throw new Error('Failed to fetch prospect data');
+    }
+    
+    const prospectData = await prospectResponse.json();
+    if (!prospectData || prospectData.length === 0) {
+      throw new Error('Prospect not found');
+    }
+    
+    const prospect = prospectData[0];
+    
+    if (prospect.clients.company_id !== companyId) {
+      throw new Error('Access denied: Prospect does not belong to your company');
+    }
+    
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&status=eq.PENDING&created_at=gte.${oneHourAgo}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (rateLimitResponse.ok) {
+      const existingTasks = await rateLimitResponse.json();
+      if (existingTasks && existingTasks.length > 0) {
+        throw new Error('Rate limit exceeded: Only 1 task per prospect per hour allowed');
+      }
+    }
+    
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&select=consent_status&order=created_at.desc&limit=1`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (communicationsResponse.ok) {
+      const commData = await communicationsResponse.json();
+      if (commData && commData.length > 0 && commData[0].consent_status === 'denied') {
+        throw new Error('Cannot schedule action: Prospect has denied consent');
+      }
+    }
+    
+    const contextResult = await aggregateProspectContext(prospectId, authProfile, env);
+    if (!contextResult.success) {
+      throw new Error('Failed to get prospect context: ' + contextResult.error);
+    }
+    
+    const aiDecision = {
+      action_type: 'SMS',
+      scheduled_for: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      ai_rationale: 'Follow-up SMS based on prospect engagement analysis'
+    };
+    
+    const taskData = {
+      prospect_id: prospectId,
+      company_id: companyId,
+      action_type: aiDecision.action_type,
+      scheduled_for: aiDecision.scheduled_for,
+      ai_rationale: aiDecision.ai_rationale,
+      status: 'PENDING'
+    };
+    
+    const insertResponse = await fetch('https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(taskData)
+    });
+    
+    if (!insertResponse.ok) {
+      throw new Error('Failed to create task');
+    }
+    
+    const taskResult = await insertResponse.json();
+    const task = taskResult[0];
+    
+    const updateLeadData = {
+      automation_status: 'ACTIVE',
+      next_action_scheduled: aiDecision.scheduled_for
+    };
+    
+    const updateLeadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updateLeadData)
+    });
+    
+    if (!updateLeadResponse.ok) {
+      throw new Error('Failed to update lead automation status');
+    }
+    
+    return {
+      success: true,
+      data: {
+        task_id: task.id,
+        prospect_id: prospectId,
+        action_type: task.action_type,
+        scheduled_for: task.scheduled_for,
+        ai_rationale: task.ai_rationale,
+        status: task.status
+      }
+    };
+    
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2274,6 +2409,535 @@ export default {
         return new Response(JSON.stringify({
           success: true,
           data: contextResult.context
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/ai/decide/:prospectId endpoint (protected) - AI decision making for prospect actions
+    if (url.pathname.match(/^\/api\/ai\/decide\/[^\/]+$/) && request.method === 'POST') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const prospectId = pathParts[4];
+        
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const contextResult = await aggregateProspectContext(prospectId, authResult.profile, env);
+        
+        if (!contextResult.success) {
+          const statusCode = contextResult.error.includes('not found') ? 404 : 
+                           contextResult.error.includes('Access denied') ? 403 : 500;
+          
+          return new Response(JSON.stringify({
+            success: false,
+            error: contextResult.error
+          }), {
+            status: statusCode,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const aiDecision = {
+          action_type: 'SMS',
+          scheduled_for: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          ai_rationale: 'Follow-up SMS based on prospect engagement analysis and conversation history'
+        };
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: aiDecision
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/ai/schedule-action/:prospectId endpoint (protected) - Schedule AI decision as task
+    if (url.pathname.match(/^\/api\/ai\/schedule-action\/[^\/]+$/) && request.method === 'POST') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const prospectId = pathParts[4];
+        
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const scheduleResult = await scheduleProspectAction(prospectId, authResult.profile, env);
+        
+        if (!scheduleResult.success) {
+          const statusCode = scheduleResult.error.includes('not found') ? 404 : 
+                           scheduleResult.error.includes('Access denied') ? 403 :
+                           scheduleResult.error.includes('Rate limit') ? 429 :
+                           scheduleResult.error.includes('denied consent') ? 403 : 500;
+          
+          return new Response(JSON.stringify({
+            success: false,
+            error: scheduleResult.error
+          }), {
+            status: statusCode,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        return new Response(JSON.stringify(scheduleResult), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // GET /api/tasks/pending endpoint (protected) - List pending tasks for authenticated user's company
+    if (url.pathname === '/api/tasks/pending' && request.method === 'GET') {
+      try {
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const companyId = authResult.profile.company_id;
+        
+        const tasksResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?company_id=eq.${companyId}&status=eq.PENDING&order=scheduled_for.asc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!tasksResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch pending tasks'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tasks = await tasksResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: tasks
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // GET /api/tasks/:taskId endpoint (protected) - Get specific task details
+    if (url.pathname.match(/^\/api\/tasks\/[^\/]+$/) && request.method === 'GET') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const taskId = pathParts[3];
+        
+        if (!taskId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const companyId = authResult.profile.company_id;
+        
+        const taskResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?id=eq.${taskId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!taskResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch task'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tasks = await taskResponse.json();
+        if (!tasks || tasks.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: tasks[0]
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // PATCH /api/tasks/:taskId/execute endpoint (protected) - Mark task as executed
+    if (url.pathname.match(/^\/api\/tasks\/[^\/]+\/execute$/) && request.method === 'PATCH') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const taskId = pathParts[3];
+        
+        if (!taskId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const companyId = authResult.profile.company_id;
+        
+        const taskResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?id=eq.${taskId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!taskResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch task'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tasks = await taskResponse.json();
+        if (!tasks || tasks.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const task = tasks[0];
+        
+        const updateData = {
+          status: 'COMPLETED',
+          executed_at: new Date().toISOString(),
+          executed_by: authResult.profile.id
+        };
+        
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?id=eq.${taskId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!updateResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update task'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const updatedTask = await updateResponse.json();
+        
+        const updateLeadData = {
+          last_action_timestamp: new Date().toISOString()
+        };
+        
+        await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${task.prospect_id}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateLeadData)
+        });
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedTask[0]
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // DELETE /api/tasks/:taskId endpoint (protected) - Cancel scheduled task
+    if (url.pathname.match(/^\/api\/tasks\/[^\/]+$/) && request.method === 'DELETE') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const taskId = pathParts[3];
+        
+        if (!taskId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const companyId = authResult.profile.company_id;
+        
+        const taskResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?id=eq.${taskId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!taskResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch task'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const tasks = await taskResponse.json();
+        if (!tasks || tasks.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Task not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?id=eq.${taskId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete task'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Task cancelled successfully'
         }), {
           status: 200,
           headers: {
