@@ -144,7 +144,15 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       }
     });
     
-    const communicationsData = communicationsResponse.ok ? await communicationsResponse.json() : [];
+    let communicationsData = [];
+    if (communicationsResponse.ok) {
+      try {
+        const responseData = await communicationsResponse.json();
+        communicationsData = Array.isArray(responseData) ? responseData : [];
+      } catch (error) {
+        communicationsData = [];
+      }
+    }
     
     const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))`, {
       method: 'GET',
