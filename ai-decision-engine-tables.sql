@@ -157,27 +157,32 @@ CREATE POLICY "Users can access prospect_tags for their client" ON public.prospe
     prospect_id IN (
         SELECT l.id FROM public.leads l
         JOIN public.clients c ON l.client_id = c.id
-        JOIN public.profiles p ON p.client_id = c.id
+        JOIN public.profiles p ON p.company_id = c.company_id
         WHERE p.id = auth.uid()
     )
 );
 
 CREATE POLICY "Users can access playbooks for their client" ON public.playbooks FOR ALL USING (
     client_id IN (
-        SELECT p.client_id FROM public.profiles p WHERE p.id = auth.uid()
+        SELECT c.id FROM public.clients c
+        JOIN public.profiles p ON p.company_id = c.company_id
+        WHERE p.id = auth.uid()
     )
 );
 
 CREATE POLICY "Users can access initiatives for their client" ON public.initiatives FOR ALL USING (
     client_id IN (
-        SELECT p.client_id FROM public.profiles p WHERE p.id = auth.uid()
+        SELECT c.id FROM public.clients c
+        JOIN public.profiles p ON p.company_id = c.company_id
+        WHERE p.id = auth.uid()
     )
 );
 
 CREATE POLICY "Users can access initiative_prospects for their client" ON public.initiative_prospects FOR ALL USING (
     initiative_id IN (
         SELECT i.id FROM public.initiatives i
-        JOIN public.profiles p ON p.client_id = i.client_id
+        JOIN public.clients c ON i.client_id = c.id
+        JOIN public.profiles p ON p.company_id = c.company_id
         WHERE p.id = auth.uid()
     )
 );
@@ -185,7 +190,8 @@ CREATE POLICY "Users can access initiative_prospects for their client" ON public
 CREATE POLICY "Users can access task_queue for their client" ON public.task_queue FOR ALL USING (
     initiative_id IN (
         SELECT i.id FROM public.initiatives i
-        JOIN public.profiles p ON p.client_id = i.client_id
+        JOIN public.clients c ON i.client_id = c.id
+        JOIN public.profiles p ON p.company_id = c.company_id
         WHERE p.id = auth.uid()
     )
 );
