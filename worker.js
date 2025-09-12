@@ -10,6 +10,177 @@ function getJWTPayload(token) {
   }
 }
 
+async function makeAIDecision(prospectContext, env) {
+  if (!env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY environment variable not configured');
+  }
+
+  const prompt = `You are an AI assistant for a real estate lead qualification system. Based on the prospect context below, determine the next best communication action.
+
+PROSPECT CONTEXT:
+${JSON.stringify(prospectContext, null, 2)}
+
+DECISION RULES:
+- If no previous contact: Start with SMS
+- If SMS sent but no response after 2+ days: Try phone call
+- If prospect responded positively: Continue conversation
+- If prospect seems interested: Move toward appointment scheduling
+- If prospect is unresponsive after 3+ attempts: Move to REVIEW status
+- Respect DNC preferences and consent status
+
+RESPOND WITH VALID JSON:
+{
+  "action_type": "SMS|CALL|WAIT|REVIEW|COMPLETE",
+  "action_payload": {
+    "message": "SMS text or call objective",
+    "priority": "low|medium|high"
+  },
+  "scheduled_for": "ISO timestamp (now + appropriate delay)",
+  "ai_rationale": "Brief explanation of decision reasoning"
+}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0]?.message?.content;
+
+    if (!aiResponse) {
+      throw new Error('No response from OpenAI API');
+    }
+
+    let decision;
+    try {
+      decision = JSON.parse(aiResponse);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+    }
+
+    const validActionTypes = ['SMS', 'CALL', 'WAIT', 'REVIEW', 'COMPLETE'];
+    if (!decision.action_type || !validActionTypes.includes(decision.action_type)) {
+      throw new Error(`Invalid action_type: ${decision.action_type}`);
+    }
+
+    if (!decision.scheduled_for || isNaN(new Date(decision.scheduled_for).getTime())) {
+      throw new Error(`Invalid scheduled_for timestamp: ${decision.scheduled_for}`);
+    }
+
+    if (!decision.action_payload || typeof decision.action_payload !== 'object') {
+      throw new Error('Invalid action_payload structure');
+    }
+
+    const validPriorities = ['low', 'medium', 'high'];
+    if (!decision.action_payload.priority || !validPriorities.includes(decision.action_payload.priority)) {
+      throw new Error(`Invalid priority: ${decision.action_payload.priority}`);
+    }
+
+    if (decision.ai_rationale && typeof decision.ai_rationale === 'string') {
+      decision.ai_rationale = decision.ai_rationale.substring(0, 500);
+    }
+
+    return decision;
+
+  } catch (error) {
+    console.error('AI Decision Error:', error.message);
+    
+    return {
+      action_type: 'REVIEW',
+      action_payload: {
+        message: 'Manual review required due to AI processing error',
+        priority: 'medium'
+      },
+      scheduled_for: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      ai_rationale: `AI processing failed: ${error.message}. Defaulting to manual review.`
+    };
+  }
+}
+
+async function aggregateProspectContext(prospectId, env) {
+  try {
+    const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,lead_tags(tags(*))`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!leadResponse.ok) {
+      throw new Error('Failed to fetch prospect data');
+    }
+
+    const leadData = await leadResponse.json();
+    if (!leadData || leadData.length === 0) {
+      throw new Error('Prospect not found');
+    }
+
+    const prospect = leadData[0];
+
+    let communications = [];
+    try {
+      const commResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&order=created_at.desc&limit=10`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+          'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (commResponse.ok) {
+        communications = await commResponse.json();
+      }
+    } catch (commError) {
+      console.log('Communications table not available, continuing without history');
+    }
+
+    const tags = prospect.lead_tags ? prospect.lead_tags.map(leadTag => leadTag.tags).filter(tag => tag !== null) : [];
+
+    return {
+      prospect_id: prospect.id,
+      name: prospect.name,
+      email: prospect.email,
+      phone: prospect.phone,
+      status: prospect.status,
+      created_at: prospect.created_at,
+      updated_at: prospect.updated_at,
+      tags: tags,
+      communication_history: communications,
+      dnc_status: prospect.dnc_status || null,
+      consent_status: prospect.consent_status || null,
+      last_contact_date: communications.length > 0 ? communications[0].created_at : null,
+      contact_attempts: communications.length,
+      custom_data: prospect.custom_data || {}
+    };
+
+  } catch (error) {
+    throw new Error(`Context aggregation failed: ${error.message}`);
+  }
+}
+
 // Centralized authentication helper function
 async function getAuthenticatedProfile(request, env) {
   // Extract the Authorization header
@@ -2105,6 +2276,160 @@ export default {
         return new Response(JSON.stringify({
           success: false,
           error: 'Server error: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/ai/decide/:prospectId endpoint (protected) - AI Decision Engine for prospect communication
+    if (url.pathname.match(/^\/api\/ai\/decide\/[^\/]+$/) && request.method === 'POST') {
+      try {
+        const pathParts = url.pathname.split('/');
+        const prospectId = pathParts[4];
+        
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+
+        const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=id,client_id`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!leadResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify prospect existence'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const leadData = await leadResponse.json();
+        if (!leadData || leadData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const clientId = leadData[0].client_id;
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!clientResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify client ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const clientData = await clientResponse.json();
+        if (!clientData || clientData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Access denied: Prospect does not belong to your company'
+          }), {
+            status: 403,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+
+        const prospectContext = await aggregateProspectContext(prospectId, env);
+
+        const aiDecision = await makeAIDecision(prospectContext, env);
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            prospect_id: prospectId,
+            decision: aiDecision,
+            context_summary: {
+              name: prospectContext.name,
+              status: prospectContext.status,
+              contact_attempts: prospectContext.contact_attempts,
+              last_contact_date: prospectContext.last_contact_date
+            }
+          },
+          message: 'AI decision generated successfully'
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+
+      } catch (error) {
+        if (error.message.includes('rate limit') || error.message.includes('timeout')) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'AI service temporarily unavailable. Please try again later.',
+            retry_after: 60
+          }), {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Retry-After': '60'
+            }
+          });
+        }
+
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'AI decision processing failed: ' + error.message
         }), {
           status: 500,
           headers: {
