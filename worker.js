@@ -52,7 +52,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Fetch user's profile from Supabase using the sub (user ID) from token payload
-  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}`, {
+  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=client_id`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -98,9 +98,9 @@ async function getAuthenticatedProfile(request, env) {
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
   try {
-    const companyId = authProfile.company_id;
+    const clientId = authProfile.client_id;
     
-    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,company_id)`, {
+    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,client_id)`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -154,7 +154,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       }
     }
     
-    const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,company_id,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))&initiatives.company_id=eq.${companyId}`, {
+    const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,client_id,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))&initiatives.client_id=eq.${clientId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -328,9 +328,9 @@ Consider the prospect's engagement level, recent communications, and current ini
 
 async function scheduleProspectAction(prospectId, authProfile, env) {
   try {
-    const companyId = authProfile.company_id;
+    const clientId = authProfile.client_id;
     
-    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,company_id)`, {
+    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,client_id)`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -530,7 +530,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const clientId = profile.client_id;
         
         // Get query parameters for filtering
         const urlParams = new URLSearchParams(url.search);
@@ -538,13 +538,13 @@ export default {
         const limit = urlParams.get('limit') || '50';
         const offset = urlParams.get('offset') || '0';
         
-        // Build query with company_id filter and optional search
-        let playbooksQuery = `company_id=eq.${companyId}`;
+        // Build query with client_id filter and optional search
+        let playbooksQuery = `client_id=eq.${clientId}`;
         if (search) {
           playbooksQuery += `&or=(name.ilike.*${search}*,goal_description.ilike.*${search}*)`;
         }
         
-        // Filter playbooks by company_id for multi-tenant security
+        // Filter playbooks by client_id for multi-tenant security
         const playbooksResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?${playbooksQuery}&select=*&limit=${limit}&offset=${offset}&order=created_at.desc`, {
           method: 'GET',
           headers: {
@@ -609,7 +609,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const clientId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -653,7 +653,7 @@ export default {
           goal_description: goal_description || null,
           ai_instructions_and_persona: ai_instructions_and_persona || null,
           constraints: parsedConstraints,
-          company_id: companyId
+          client_id: clientId
         };
         
         const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks`, {
@@ -734,10 +734,10 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const clientId = profile.client_id;
         
         // Execute query to retrieve single playbook with multi-tenant security
-        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&client_id=eq.${clientId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -824,10 +824,10 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const clientId = profile.client_id;
         
         // Verify playbook ownership
-        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&client_id=eq.${clientId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -907,7 +907,7 @@ export default {
           constraints: parsedConstraints
         };
         
-        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&client_id=eq.${clientId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -985,10 +985,10 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const clientId = profile.client_id;
         
         // Verify playbook ownership before deletion
-        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&client_id=eq.${clientId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1026,7 +1026,7 @@ export default {
         }
         
         // Execute deletion with multi-tenant security
-        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&client_id=eq.${clientId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
