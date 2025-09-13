@@ -124,7 +124,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       throw new Error('Access denied: Prospect does not belong to your company');
     }
     
-    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
+    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -135,7 +135,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const tagsData = tagsResponse.ok ? await tagsResponse.json() : [];
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -154,7 +154,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       }
     }
     
-    const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))`, {
+    const initiativeProspectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?prospect_id=eq.${prospectId}&select=status,contact_attempts,initiatives!inner(id,name,status,environmental_settings,company_id,playbooks!inner(name,goal_description,ai_instructions_and_persona,constraints))&initiatives.company_id=eq.${companyId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -203,10 +203,283 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       } : null
     };
     
-    return { success: true, context };
+    return { success: true, data: context };
     
   } catch (error) {
     return { success: false, error: error.message };
+  }
+}
+
+async function makeAIDecision(prospectContext, env) {
+  try {
+    if (!env.OPENAI_API_KEY) {
+      return {
+        success: false,
+        error: 'OpenAI API key not configured'
+      };
+    }
+
+    const prompt = `You are an AI assistant for a real estate lead management system. Based on the prospect context below, determine the next best action to take.
+
+PROSPECT CONTEXT:
+Name: ${prospectContext.prospect.first_name} ${prospectContext.prospect.last_name}
+Phone: ${prospectContext.prospect.phone_e164}
+Email: ${prospectContext.prospect.email}
+Notes: ${prospectContext.prospect.path_hint}
+
+APPLIED TAGS:
+${prospectContext.tags.map(tag => `- ${tag.tag}: ${tag.definition} (applied: ${tag.applied_at})`).join('\n')}
+
+RECENT COMMUNICATIONS:
+${prospectContext.communications.slice(0, 5).map(comm => `- ${comm.type}: ${comm.content} (${comm.created_at})`).join('\n')}
+
+ACTIVE INITIATIVES:
+${prospectContext.initiatives.map(init => `- ${init.name}: ${init.goal_description}`).join('\n')}
+
+Based on this context, determine the next action. Respond with a JSON object containing:
+- action_type: one of "SMS", "CALL", "WAIT", "REVIEW", "COMPLETE"
+- scheduled_for: ISO timestamp for when to execute (must be in the future)
+- ai_rationale: brief explanation of why this action was chosen
+
+Consider the prospect's engagement level, recent communications, and current initiative status.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful AI assistant for real estate lead management. Always respond with valid JSON.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `OpenAI API error: ${response.status} ${response.statusText}`
+      };
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+
+    let aiDecision;
+    try {
+      aiDecision = JSON.parse(aiResponse);
+    } catch (parseError) {
+      return {
+        success: false,
+        error: 'Failed to parse AI response as JSON'
+      };
+    }
+
+    const validActionTypes = ['SMS', 'CALL', 'WAIT', 'REVIEW', 'COMPLETE'];
+    if (!validActionTypes.includes(aiDecision.action_type)) {
+      return {
+        success: false,
+        error: 'Invalid action_type from AI response'
+      };
+    }
+
+    const scheduledTime = new Date(aiDecision.scheduled_for);
+    if (isNaN(scheduledTime.getTime()) || scheduledTime <= new Date()) {
+      return {
+        success: false,
+        error: 'Invalid scheduled_for timestamp from AI response'
+      };
+    }
+
+    if (!aiDecision.ai_rationale || typeof aiDecision.ai_rationale !== 'string') {
+      return {
+        success: false,
+        error: 'Missing or invalid ai_rationale from AI response'
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        action_type: aiDecision.action_type,
+        scheduled_for: aiDecision.scheduled_for,
+        ai_rationale: aiDecision.ai_rationale
+      }
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: 'OpenAI API call failed: ' + error.message
+    };
+  }
+}
+
+async function scheduleProspectAction(prospectId, authProfile, env) {
+  try {
+    const companyId = authProfile.company_id;
+    
+    const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,company_id)`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!prospectResponse.ok) {
+      return {
+        success: false,
+        error: 'Failed to fetch prospect data'
+      };
+    }
+    
+    const prospectData = await prospectResponse.json();
+    if (!prospectData || prospectData.length === 0) {
+      return {
+        success: false,
+        error: 'Prospect not found'
+      };
+    }
+    
+    const prospect = prospectData[0];
+    
+    if (prospect.clients.company_id !== companyId) {
+      return {
+        success: false,
+        error: 'Access denied: Prospect does not belong to your company'
+      };
+    }
+    
+    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&company_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (rateLimitResponse.ok) {
+      const existingTasks = await rateLimitResponse.json();
+      if (existingTasks && existingTasks.length > 0) {
+        return {
+          success: false,
+          error: 'Rate limit exceeded: Only one task per prospect per hour allowed'
+        };
+      }
+    }
+    
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=consent_status&order=created_at.desc&limit=1`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (communicationsResponse.ok) {
+      const commData = await communicationsResponse.json();
+      if (commData && commData.length > 0 && commData[0].consent_status === 'denied') {
+        return {
+          success: false,
+          error: 'Cannot schedule action: Prospect has denied consent'
+        };
+      }
+    }
+    
+    const contextResult = await aggregateProspectContext(prospectId, authProfile, env);
+    if (!contextResult.success) {
+      return {
+        success: false,
+        error: 'Failed to get prospect context: ' + contextResult.error
+      };
+    }
+    
+    const aiDecisionResult = await makeAIDecision(contextResult.data, env);
+    if (!aiDecisionResult.success) {
+      return {
+        success: false,
+        error: 'AI decision failed: ' + aiDecisionResult.error
+      };
+    }
+    
+    const aiDecision = aiDecisionResult.data;
+    
+    const taskData = {
+      prospect_id: prospectId,
+      company_id: companyId,
+      action_type: aiDecision.action_type,
+      scheduled_for: aiDecision.scheduled_for,
+      ai_rationale: aiDecision.ai_rationale,
+      status: 'PENDING'
+    };
+    
+    const insertResponse = await fetch('https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(taskData)
+    });
+    
+    if (!insertResponse.ok) {
+      return {
+        success: false,
+        error: 'Failed to create task'
+      };
+    }
+    
+    const taskResult = await insertResponse.json();
+    
+    const updateLeadData = {
+      automation_status: 'ACTIVE',
+      next_action_scheduled: aiDecision.scheduled_for
+    };
+    
+    const updateLeadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updateLeadData)
+    });
+    
+    return {
+      success: true,
+      data: {
+        task_id: taskResult[0].id,
+        prospect_id: prospectId,
+        action_type: aiDecision.action_type,
+        scheduled_for: aiDecision.scheduled_for,
+        ai_rationale: aiDecision.ai_rationale,
+        status: 'PENDING'
+      }
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Server error: ' + error.message
+    };
   }
 }
 
