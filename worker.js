@@ -520,6 +520,560 @@ export default {
       });
     }
     
+    // GET /api/playbooks endpoint (protected) - List all playbooks for authenticated user's company
+    if (url.pathname === '/api/playbooks' && request.method === 'GET') {
+      try {
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Get query parameters for filtering
+        const urlParams = new URLSearchParams(url.search);
+        const search = urlParams.get('search');
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        
+        // Build query with company_id filter and optional search
+        let playbooksQuery = `company_id=eq.${companyId}`;
+        if (search) {
+          playbooksQuery += `&or=(name.ilike.*${search}*,goal_description.ilike.*${search}*)`;
+        }
+        
+        // Filter playbooks by company_id for multi-tenant security
+        const playbooksResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?${playbooksQuery}&select=*&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!playbooksResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch playbooks'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const playbooksData = await playbooksResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: playbooksData,
+          pagination: {
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            count: playbooksData.length
+          }
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // POST /api/playbooks endpoint (protected) - Create new playbook
+    if (url.pathname === '/api/playbooks' && request.method === 'POST') {
+      try {
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Parse request body
+        const body = await request.json();
+        const { name, goal_description, ai_instructions_and_persona, constraints } = body;
+        
+        if (!name) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook name is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Validate constraints JSON if provided
+        let parsedConstraints = {};
+        if (constraints) {
+          try {
+            parsedConstraints = typeof constraints === 'string' ? JSON.parse(constraints) : constraints;
+          } catch (error) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON format in constraints field'
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+        }
+        
+        // Create the playbook record
+        const playbookData = {
+          name: name,
+          goal_description: goal_description || null,
+          ai_instructions_and_persona: ai_instructions_and_persona || null,
+          constraints: parsedConstraints,
+          company_id: companyId
+        };
+        
+        const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(playbookData)
+        });
+        
+        if (!createResponse.ok) {
+          const errorData = await createResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to create playbook: ' + errorData
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const newPlaybook = await createResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: newPlaybook[0],
+          message: 'Playbook created successfully'
+        }), {
+          status: 201,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // GET /api/playbooks/:id endpoint (protected) - Retrieve single playbook by ID
+    if (url.pathname.startsWith('/api/playbooks/') && url.pathname.split('/').length === 4 && request.method === 'GET') {
+      try {
+        // Extract playbook ID from path
+        const playbookId = url.pathname.split('/api/playbooks/')[1];
+        if (!playbookId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Execute query to retrieve single playbook with multi-tenant security
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!playbookResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve playbook'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const playbookData = await playbookResponse.json();
+        
+        if (!playbookData || playbookData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: playbookData[0]
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // PATCH /api/playbooks/:id endpoint (protected) - Update playbook
+    if (url.pathname.startsWith('/api/playbooks/') && url.pathname.split('/').length === 4 && request.method === 'PATCH') {
+      try {
+        // Extract playbook ID from path
+        const playbookId = url.pathname.split('/api/playbooks/')[1];
+        if (!playbookId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Verify playbook ownership
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!playbookResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify playbook ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const playbookData = await playbookResponse.json();
+        
+        if (!playbookData || playbookData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Parse and validate request body
+        const body = await request.json();
+        const { name, goal_description, ai_instructions_and_persona, constraints } = body;
+        
+        if (!name) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook name is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Validate constraints JSON if provided
+        let parsedConstraints = {};
+        if (constraints !== undefined) {
+          try {
+            parsedConstraints = typeof constraints === 'string' ? JSON.parse(constraints) : constraints;
+          } catch (error) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON format in constraints field'
+            }), {
+              status: 400,
+              headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          }
+        }
+        
+        const updateData = {
+          name: name,
+          goal_description: goal_description || null,
+          ai_instructions_and_persona: ai_instructions_and_persona || null,
+          constraints: parsedConstraints
+        };
+        
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update playbook: ' + errorData
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const updatedPlaybook = await updateResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedPlaybook[0],
+          message: 'Playbook updated successfully'
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
+    // DELETE /api/playbooks/:id endpoint (protected) - Delete playbook
+    if (url.pathname.startsWith('/api/playbooks/') && url.pathname.split('/').length === 4 && request.method === 'DELETE') {
+      try {
+        // Extract playbook ID from path
+        const playbookId = url.pathname.split('/api/playbooks/')[1];
+        if (!playbookId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook ID is required'
+          }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        const companyId = profile.company_id;
+        
+        // Verify playbook ownership before deletion
+        const playbookResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!playbookResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to verify playbook ownership'
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        const playbookData = await playbookResponse.json();
+        
+        if (!playbookData || playbookData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Playbook not found'
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Execute deletion with multi-tenant security
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/playbooks?id=eq.${playbookId}&company_id=eq.${companyId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          const errorData = await deleteResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete playbook: ' + errorData
+          }), {
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Playbook deleted successfully'
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+
     // Auth signup endpoint - COMPLETE IMPLEMENTATION
     if (url.pathname === '/api/auth/signup' && request.method === 'POST') {
       try {

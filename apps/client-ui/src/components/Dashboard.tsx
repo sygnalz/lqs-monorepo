@@ -147,6 +147,26 @@ const Dashboard: React.FC = () => {
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-xl font-bold text-indigo-600">LQS</span>
               </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                >
+                  Admin
+                </button>
+                <button
+                  onClick={() => navigate('/playbooks')}
+                  className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                >
+                  Playbooks
+                </button>
+              </div>
             </div>
             <div className="flex items-center">
               <span className="text-sm text-gray-500 mr-4">

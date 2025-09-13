@@ -11,6 +11,7 @@ import ClientDetailPage from './pages/ClientDetailPage'
 import CreateLeadPage from './pages/CreateLeadPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import ProspectDetailPage from './pages/ProspectDetailPage'
+import PlaybooksPage from './pages/PlaybooksPage'
 
 function App() {
   return (
@@ -73,6 +74,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AdminDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/playbooks" 
+            element={
+              <ProtectedRoute>
+                <PlaybooksPage />
               </ProtectedRoute>
             } 
           />

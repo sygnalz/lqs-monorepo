@@ -264,14 +264,37 @@ const AdminDashboardPage: React.FC = () => {
               <div className="flex-shrink-0 flex items-center">
                 <span className="text-xl font-bold text-indigo-600">LQS Admin</span>
               </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Admin
+                </button>
+                <button
+                  onClick={() => navigate('/playbooks')}
+                  className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                >
+                  Playbooks
+                </button>
+              </div>
             </div>
-            <div className="flex items-center">
-              <span className="text-sm text-gray-500 mr-4">
-                Logged in as: {user?.email}
-              </span>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Refresh
+              </button>
               <button
                 onClick={handleLogout}
-                className="px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Logout
               </button>
