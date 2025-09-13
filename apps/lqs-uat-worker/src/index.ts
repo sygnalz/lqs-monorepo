@@ -268,7 +268,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .insert([{
-        company_id: profile.company_id,
+        company_id: profile.client_id,
         name: name,
         email: email,
         phone: phone || null,
@@ -326,7 +326,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
       .from('leads')
       .select('*')
       .eq('id', leadId)
-      .eq('company_id', profile.company_id)
+      .eq('company_id', profile.client_id)
       .single()
 
     if (leadError || !leadData) {
@@ -374,7 +374,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
       .select('*')
-      .eq('company_id', profile.company_id)
+      .eq('company_id', profile.client_id)
       .order('created_at', { ascending: false })
 
     if (leadsError) {
