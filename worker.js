@@ -1389,7 +1389,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -1480,7 +1480,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Filter clients by company_id for multi-tenant security
         const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
@@ -1563,7 +1563,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Execute query to retrieve single client with multi-tenant security
         // Filter by both client ID and company_id to ensure users can only access clients from their own company
@@ -1656,7 +1656,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -1781,7 +1781,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // First, verify that the client exists and belongs to the user's company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
@@ -1899,7 +1899,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
@@ -2068,7 +2068,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
@@ -2277,7 +2277,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body to get tag_id
         const body = await request.json();
@@ -2515,7 +2515,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: First verify that the lead exists
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id`, {
@@ -2708,7 +2708,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -2928,7 +2928,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: First verify that the lead exists and belongs to the user's company
         const leadResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${leadId}&select=id,client_id`, {
