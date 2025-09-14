@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/auth';
 import PlaybookForm from '../components/PlaybookForm';
 import PlaybookList from '../components/PlaybookList';
+import PlaybookWizard from '../components/PlaybookWizard';
 import axios from 'axios';
 
 const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
@@ -25,6 +26,7 @@ const PlaybooksPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [editingPlaybook, setEditingPlaybook] = useState<Playbook | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -76,6 +78,7 @@ const PlaybooksPage: React.FC = () => {
 
   const handleCreateSuccess = () => {
     setShowCreateForm(false);
+    setShowCreateWizard(false);
     fetchPlaybooks(searchTerm);
   };
 
@@ -149,10 +152,22 @@ const PlaybooksPage: React.FC = () => {
                     Dashboard
                   </button>
                   <button
+                    onClick={() => navigate('/admin')}
+                    className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                  >
+                    Admin
+                  </button>
+                  <button
                     onClick={() => navigate('/playbooks')}
                     className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                   >
                     Playbooks
+                  </button>
+                  <button
+                    onClick={() => navigate('/initiatives')}
+                    className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                  >
+                    Initiatives
                   </button>
                 </div>
               </div>
@@ -198,10 +213,22 @@ const PlaybooksPage: React.FC = () => {
                     Dashboard
                   </button>
                   <button
+                    onClick={() => navigate('/admin')}
+                    className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                  >
+                    Admin
+                  </button>
+                  <button
                     onClick={() => navigate('/playbooks')}
                     className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                   >
                     Playbooks
+                  </button>
+                  <button
+                    onClick={() => navigate('/initiatives')}
+                    className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
+                  >
+                    Initiatives
                   </button>
                 </div>
               </div>
@@ -284,7 +311,7 @@ const PlaybooksPage: React.FC = () => {
                 </p>
               </div>
               <button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => setShowCreateWizard(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Create Playbook
@@ -307,6 +334,13 @@ const PlaybooksPage: React.FC = () => {
           />
         </div>
       </main>
+
+      {showCreateWizard && (
+        <PlaybookWizard
+          onClose={() => setShowCreateWizard(false)}
+          onSuccess={handleCreateSuccess}
+        />
+      )}
     </div>
   );
 };

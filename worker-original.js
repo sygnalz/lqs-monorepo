@@ -593,7 +593,7 @@ export default {
         const offset = urlParams.get('offset') || '0';
         
         // Build query with filters
-        let leadsQuery = `company_id=eq.${companyId}`;
+        let leadsQuery = `client_id=eq.${companyId}`;
         if (status) {
           leadsQuery += `&status=eq.${status}`;
         }

@@ -80,7 +80,7 @@ async function testNewPostEndpoint() {
       console.log('      Phone:', responseData.phone);
       console.log('      Notes:', responseData.notes);
       console.log('      Status:', responseData.status);
-      console.log('      Company ID:', responseData.company_id);
+      console.log('      Client ID:', responseData.client_id);
       console.log('      Created At:', responseData.created_at);
     } else {
       const errorData = await createResponse.json();

@@ -14,6 +14,7 @@ import ProspectDetailPage from './pages/ProspectDetailPage'
 import PlaybooksPage from './pages/PlaybooksPage'
 import InitiativesPage from './pages/InitiativesPage'
 import InitiativeDetail from './components/InitiativeDetail'
+import PlaybookDetail from './components/PlaybookDetail'
 
 function App() {
   return (
@@ -84,6 +85,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <PlaybooksPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/playbooks/:id" 
+            element={
+              <ProtectedRoute>
+                <PlaybookDetail />
               </ProtectedRoute>
             } 
           />
