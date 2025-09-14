@@ -6,7 +6,7 @@ import { Lead } from '../types/lead';
 import { Tag } from '../types/tag';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 const ClientDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
