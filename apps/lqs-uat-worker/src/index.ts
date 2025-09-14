@@ -9,7 +9,11 @@ type Bindings = {
   SUPABASE_SERVICE_ROLE_KEY?: string
 }
 
-const app = new Hono<{ Bindings: Bindings }>()
+type User = {
+  sub: string
+}
+
+const app = new Hono<{ Bindings: Bindings; Variables: { user: User } }>()
 
 // Apply CORS middleware globally at the top
 app.use('*', cors({
@@ -427,13 +431,14 @@ app.get('/api/playbooks', authenticateJWT, async (c) => {
     const { data: playbooksData, error: playbooksError } = await supabase
       .from('playbooks')
       .select('*')
-      .eq('company_id', profile.company_id)
+      .eq('client_id', profile.company_id)
       .order('created_at', { ascending: false })
 
     if (playbooksError) {
       return c.json({
         success: false,
-        message: 'Failed to fetch playbooks'
+        message: 'Failed to fetch playbooks',
+        debug: { error: playbooksError, company_id: profile.company_id }
       }, 500)
     }
 
