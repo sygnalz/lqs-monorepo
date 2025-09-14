@@ -12,6 +12,8 @@ import CreateLeadPage from './pages/CreateLeadPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import ProspectDetailPage from './pages/ProspectDetailPage'
 import PlaybooksPage from './pages/PlaybooksPage'
+import InitiativesPage from './pages/InitiativesPage'
+import InitiativeDetail from './components/InitiativeDetail'
 
 function App() {
   return (
@@ -82,6 +84,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <PlaybooksPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/initiatives" 
+            element={
+              <ProtectedRoute>
+                <InitiativesPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/initiatives/:id" 
+            element={
+              <ProtectedRoute>
+                <InitiativeDetail />
               </ProtectedRoute>
             } 
           />

@@ -3135,6 +3135,409 @@ export default {
     }
     
     // Default 404 for unknown endpoints
+    // GET /api/initiatives - List initiatives with prospect counts
+    if (url.pathname === '/api/initiatives' && request.method === 'GET') {
+      try {
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const urlParams = new URLSearchParams(url.search);
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        
+        const initiativesResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives?client_id=eq.${clientId}&select=*,playbooks(name),initiative_prospects(count)&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!initiativesResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch initiatives'
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const initiativesData = await initiativesResponse.json();
+        return new Response(JSON.stringify({
+          success: true,
+          data: initiativesData,
+          pagination: { limit: parseInt(limit), offset: parseInt(offset), count: initiativesData.length }
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // POST /api/initiatives - Create new initiative
+    if (url.pathname === '/api/initiatives' && request.method === 'POST') {
+      try {
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const body = await request.json();
+        const { name, playbook_id, environmental_settings } = body;
+        
+        if (!name || !playbook_id) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative name and playbook_id are required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const initiativeData = {
+          name,
+          playbook_id,
+          environmental_settings: environmental_settings || {},
+          status: 'DRAFT',
+          client_id: clientId
+        };
+        
+        const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(initiativeData)
+        });
+        
+        if (!createResponse.ok) {
+          const errorData = await createResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to create initiative: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const newInitiative = await createResponse.json();
+        return new Response(JSON.stringify({
+          success: true,
+          data: newInitiative[0],
+          message: 'Initiative created successfully'
+        }), { status: 201, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // GET /api/initiatives/:id - Retrieve single initiative with prospects
+    if (url.pathname.startsWith('/api/initiatives/') && url.pathname.split('/').length === 4 && request.method === 'GET') {
+      try {
+        const initiativeId = url.pathname.split('/api/initiatives/')[1];
+        if (!initiativeId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const initiativeResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives?id=eq.${initiativeId}&client_id=eq.${clientId}&select=*,playbooks(name,goal_description),initiative_prospects(prospect_id,status,contact_attempts,leads(name,phone,email))`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!initiativeResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch initiative'
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const initiativeData = await initiativeResponse.json();
+        if (!initiativeData || initiativeData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative not found'
+          }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: initiativeData[0]
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // PATCH /api/initiatives/:id - Update initiative status/settings
+    if (url.pathname.startsWith('/api/initiatives/') && url.pathname.split('/').length === 4 && request.method === 'PATCH') {
+      try {
+        const initiativeId = url.pathname.split('/api/initiatives/')[1];
+        if (!initiativeId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const body = await request.json();
+        const { status, environmental_settings } = body;
+        
+        const updateData = {};
+        if (status) updateData.status = status;
+        if (environmental_settings) updateData.environmental_settings = environmental_settings;
+        
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives?id=eq.${initiativeId}&client_id=eq.${clientId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update initiative: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const updatedInitiative = await updateResponse.json();
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedInitiative[0],
+          message: 'Initiative updated successfully'
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // DELETE /api/initiatives/:id - Delete initiative
+    if (url.pathname.startsWith('/api/initiatives/') && url.pathname.split('/').length === 4 && request.method === 'DELETE') {
+      try {
+        const initiativeId = url.pathname.split('/api/initiatives/')[1];
+        if (!initiativeId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives?id=eq.${initiativeId}&client_id=eq.${clientId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!deleteResponse.ok) {
+          const errorData = await deleteResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete initiative: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Initiative deleted successfully'
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // POST /api/initiatives/:id/prospects - Add prospects to initiative
+    if (url.pathname.match(/^\/api\/initiatives\/[^\/]+\/prospects$/) && request.method === 'POST') {
+      try {
+        const initiativeId = url.pathname.split('/')[3];
+        if (!initiativeId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const body = await request.json();
+        const { prospect_ids } = body;
+        
+        if (!prospect_ids || !Array.isArray(prospect_ids)) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'prospect_ids array is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        // Verify initiative ownership
+        const initiativeResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiatives?id=eq.${initiativeId}&client_id=eq.${clientId}&select=id`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const initiativeData = await initiativeResponse.json();
+        if (!initiativeData || initiativeData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative not found or access denied'
+          }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        // Create initiative_prospects records
+        const prospectRecords = prospect_ids.map(prospect_id => ({
+          initiative_id: initiativeId,
+          prospect_id,
+          status: 'ACTIVE',
+          contact_attempts: 0
+        }));
+        
+        const insertResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(prospectRecords)
+        });
+        
+        if (!insertResponse.ok) {
+          const errorData = await insertResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to add prospects to initiative: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const insertedRecords = await insertResponse.json();
+        return new Response(JSON.stringify({
+          success: true,
+          data: insertedRecords,
+          message: `${prospect_ids.length} prospects added to initiative successfully`
+        }), { status: 201, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    
+    // GET /api/initiatives/:id/prospects - List initiative prospects with status
+    if (url.pathname.match(/^\/api\/initiatives\/[^\/]+\/prospects$/) && request.method === 'GET') {
+      try {
+        const initiativeId = url.pathname.split('/')[3];
+        if (!initiativeId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Initiative ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) return authResult.error;
+        
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+        
+        const urlParams = new URLSearchParams(url.search);
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        
+        const prospectsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/initiative_prospects?initiative_id=eq.${initiativeId}&select=*,leads(id,name,phone,email,status),initiatives!inner(client_id)&initiatives.client_id=eq.${clientId}&limit=${limit}&offset=${offset}&order=created_at.desc`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!prospectsResponse.ok) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch initiative prospects'
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        
+        const prospectsData = await prospectsResponse.json();
+        return new Response(JSON.stringify({
+          success: true,
+          data: prospectsData,
+          pagination: { limit: parseInt(limit), offset: parseInt(offset), count: prospectsData.length }
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid request or server error: ' + error.message
+        }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
     return new Response(JSON.stringify({
       success: false,
       error: 'Endpoint not found'
