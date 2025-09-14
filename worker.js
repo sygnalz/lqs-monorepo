@@ -120,7 +120,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const prospect = prospectData[0];
     
-    if (prospect.clients.company_id !== companyId) {
+    if (prospect.clients.client_id !== companyId) {
       throw new Error('Access denied: Prospect does not belong to your company');
     }
     
@@ -356,14 +356,14 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
     
     const prospect = prospectData[0];
     
-    if (prospect.clients.company_id !== companyId) {
+    if (prospect.clients.client_id !== companyId) {
       return {
         success: false,
         error: 'Access denied: Prospect does not belong to your company'
       };
     }
     
-    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&company_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
+    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -421,7 +421,7 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
     
     const taskData = {
       prospect_id: prospectId,
-      company_id: companyId,
+      client_id: companyId,
       action_type: aiDecision.action_type,
       scheduled_for: aiDecision.scheduled_for,
       ai_rationale: aiDecision.ai_rationale,
@@ -1169,7 +1169,7 @@ export default {
           const clientData = await clientResponse.json();
           createdClientId = Array.isArray(clientData) ? clientData[0].id : clientData.id;
 
-          // STEP 3: Create profile link (user_id -> company_id mapping)
+          // STEP 3: Create profile link (user_id -> client_id mapping)
           const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles`, {
             method: 'POST',
             headers: {
@@ -1180,7 +1180,7 @@ export default {
             },
             body: JSON.stringify({
               id: createdUserId,
-              company_id: createdClientId
+              client_id: createdClientId
             })
           });
 
@@ -1414,7 +1414,7 @@ export default {
           primary_contact_name: primary_contact_name || null,
           primary_contact_email: primary_contact_email || null,
           primary_contact_phone: primary_contact_phone || null,
-          company_id: companyId
+          client_id: companyId
         };
         
         const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
@@ -1482,8 +1482,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Filter clients by company_id for multi-tenant security
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
+        // Filter clients by client_id for multi-tenant security
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?client_id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,

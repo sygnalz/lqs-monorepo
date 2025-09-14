@@ -95,7 +95,7 @@ if (url.pathname === '/api/clients' && request.method === 'POST') {
       primary_contact_name: primary_contact_name || null,
       primary_contact_email: primary_contact_email || null,
       primary_contact_phone: primary_contact_phone || null,
-      company_id: 'temp-company-id' // Temporary placeholder
+      client_id: 'temp-client-id' // Temporary placeholder
     };
     
     return new Response(JSON.stringify({

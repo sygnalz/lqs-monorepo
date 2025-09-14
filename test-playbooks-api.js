@@ -1,7 +1,7 @@
 const WORKER_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev';
 
 const TEST_USER_ID = '71b41176-4730-45b4-978a-f62bfe38b916';
-const EXPECTED_COMPANY_ID = '38cb97f5-44e2-47b1-85ab-5ef55b5a9e24';
+const EXPECTED_CLIENT_ID = '38cb97f5-44e2-47b1-85ab-5ef55b5a9e24';
 
 function createMockJWT(userId, email) {
   const header = { alg: 'HS256', typ: 'JWT' };
