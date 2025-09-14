@@ -143,7 +143,7 @@ app.post('/api/auth/signup', async (c) => {
     // Step 3: Create user profile linking to company
     const profilePayload = {
       id: authData.user.id,
-      company_id: companyData.id
+      client_id: companyData.id
     }
 
     const { error: profileError } = await supabase
@@ -254,7 +254,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('client_id')
       .eq('id', user.sub)
       .single()
 
@@ -268,7 +268,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .insert([{
-        company_id: profile.company_id,
+        client_id: profile.client_id,
         name: name,
         email: email,
         phone: phone || null,
@@ -311,7 +311,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('client_id')
       .eq('id', user.sub)
       .single()
 
@@ -326,7 +326,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
       .from('leads')
       .select('*')
       .eq('id', leadId)
-      .eq('company_id', profile.company_id)
+      .eq('client_id', profile.client_id)
       .single()
 
     if (leadError || !leadData) {
@@ -360,7 +360,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('company_id')
+      .select('client_id')
       .eq('id', user.sub)
       .single()
 
@@ -374,7 +374,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
       .select('*')
-      .eq('company_id', profile.company_id)
+      .eq('client_id', profile.client_id)
       .order('created_at', { ascending: false })
 
     if (leadsError) {
@@ -397,6 +397,64 @@ app.get('/api/leads', authenticateJWT, async (c) => {
   }
 })
 
+app.get('/api/clients', authenticateJWT, async (c) => {
+  try {
+    const user = c.get('user')
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('client_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: companyData, error: companyError } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('id', profile.client_id)
+      .single()
+
+    if (companyError || !companyData) {
+      return c.json({
+        success: false,
+        message: 'Company not found'
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      data: [{
+        id: companyData.id,
+        name: companyData.name,
+        primary_contact_name: null,
+        primary_contact_email: null,
+        primary_contact_phone: null,
+        company_id: companyData.id,
+        billing_address: null,
+        rate_per_minute: null,
+        rate_per_sms: null,
+        created_at: companyData.created_at
+      }]
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
 // Default route
 app.get('/', (c) => {
   return c.json({ 
@@ -408,7 +466,8 @@ app.get('/', (c) => {
       'POST /api/auth/signin', 
       'POST /api/leads',
       'GET /api/leads',
-      'GET /api/leads/:id'
+      'GET /api/leads/:id',
+      'GET /api/clients'
     ]
   })
 })
