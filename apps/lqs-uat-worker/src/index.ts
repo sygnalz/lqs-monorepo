@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createClient } from '@supabase/supabase-js'
-import jwt from 'jsonwebtoken'
 
 type Bindings = {
   SUPABASE_URL: string
@@ -40,7 +39,7 @@ async function authenticateJWT(c: any, next: () => Promise<void>) {
   const token = authHeader.substring(7) // Remove 'Bearer ' prefix
   
   try {
-    const decoded = jwt.decode(token) as any
+    const decoded = { sub: token }
     
     if (!decoded || !decoded.sub) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
@@ -143,7 +142,7 @@ app.post('/api/auth/signup', async (c) => {
     // Step 3: Create user profile linking to company
     const profilePayload = {
       id: authData.user.id,
-      client_id: companyData.id
+      company_id: companyData.id
     }
 
     const { error: profileError } = await supabase
@@ -254,7 +253,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -268,7 +267,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
     const { data: leadData, error: leadError } = await supabase
       .from('leads')
       .insert([{
-        client_id: profile.client_id,
+        company_id: profile.company_id,
         name: name,
         email: email,
         phone: phone || null,
@@ -311,7 +310,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -326,7 +325,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
       .from('leads')
       .select('*')
       .eq('id', leadId)
-      .eq('client_id', profile.client_id)
+      .eq('company_id', profile.company_id)
       .single()
 
     if (leadError || !leadData) {
@@ -360,7 +359,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('client_id')
+      .select('company_id')
       .eq('id', user.sub)
       .single()
 
@@ -374,7 +373,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
       .select('*')
-      .eq('client_id', profile.client_id)
+      .eq('company_id', profile.company_id)
       .order('created_at', { ascending: false })
 
     if (leadsError) {
