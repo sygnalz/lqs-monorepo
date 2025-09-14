@@ -1,7 +1,14 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createClient } from '@supabase/supabase-js'
-import jwt from 'jsonwebtoken'
+function getJWTPayload(token: string): any {
+  try {
+    const payloadPart = token.split('.')[1];
+    return JSON.parse(atob(payloadPart));
+  } catch (error) {
+    throw new Error('Invalid JWT token');
+  }
+}
 
 type Bindings = {
   SUPABASE_URL: string
@@ -40,13 +47,13 @@ async function authenticateJWT(c: any, next: () => Promise<void>) {
   const token = authHeader.substring(7) // Remove 'Bearer ' prefix
   
   try {
-    const decoded = jwt.decode(token) as any
+    const decoded = getJWTPayload(token)
     
     if (!decoded || !decoded.sub) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
     }
 
-    c.set('user', decoded)
+    c.set('user', decoded as any)
     await next()
   } catch (error) {
     return c.json({ success: false, message: 'Invalid or expired token' }, 401)
@@ -239,7 +246,7 @@ app.post('/api/auth/signin', async (c) => {
 app.post('/api/leads', authenticateJWT, async (c) => {
   try {
     const { name, email, phone, source } = await c.req.json()
-    const user = c.get('user')
+    const user = c.get('user') as any
     
     if (!name || !email) {
       return c.json({
@@ -303,7 +310,7 @@ app.post('/api/leads', authenticateJWT, async (c) => {
 app.get('/api/leads/:id', authenticateJWT, async (c) => {
   try {
     const leadId = c.req.param('id')
-    const user = c.get('user')
+    const user = c.get('user') as any
 
     // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
     const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
@@ -352,7 +359,7 @@ app.get('/api/leads/:id', authenticateJWT, async (c) => {
 // Get all leads endpoint
 app.get('/api/leads', authenticateJWT, async (c) => {
   try {
-    const user = c.get('user')
+    const user = c.get('user') as any
 
     // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
     const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
@@ -399,7 +406,7 @@ app.get('/api/leads', authenticateJWT, async (c) => {
 
 app.get('/api/clients', authenticateJWT, async (c) => {
   try {
-    const user = c.get('user')
+    const user = c.get('user') as any
 
     // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
     const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
