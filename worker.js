@@ -92,8 +92,8 @@ async function getAuthenticatedProfile(request, env) {
     };
   }
   
-  // Return successful profile data with client_id mapped from company_id for API consistency
-  return { profile: { client_id: profileData[0].company_id } };
+  // Return successful profile data with company_id for API consistency
+  return { profile: { company_id: profileData[0].company_id } };
 }
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
