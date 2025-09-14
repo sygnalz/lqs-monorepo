@@ -39,7 +39,13 @@ async function authenticateJWT(c: any, next: () => Promise<void>) {
   const token = authHeader.substring(7) // Remove 'Bearer ' prefix
   
   try {
-    const decoded = { sub: token }
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      return c.json({ success: false, message: 'Invalid token format' }, 401)
+    }
+    
+    const payload = JSON.parse(atob(parts[1]))
+    const decoded = { sub: payload.sub }
     
     if (!decoded || !decoded.sub) {
       return c.json({ success: false, message: 'Invalid token' }, 401)
@@ -396,6 +402,54 @@ app.get('/api/leads', authenticateJWT, async (c) => {
   }
 })
 
+// Get all playbooks endpoint
+app.get('/api/playbooks', authenticateJWT, async (c) => {
+  try {
+    const user = c.get('user')
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: playbooksData, error: playbooksError } = await supabase
+      .from('playbooks')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .order('created_at', { ascending: false })
+
+    if (playbooksError) {
+      return c.json({
+        success: false,
+        message: 'Failed to fetch playbooks'
+      }, 500)
+    }
+
+    return c.json({
+      success: true,
+      playbooks: playbooksData || []
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
 // Default route
 app.get('/', (c) => {
   return c.json({ 
@@ -407,7 +461,8 @@ app.get('/', (c) => {
       'POST /api/auth/signin', 
       'POST /api/leads',
       'GET /api/leads',
-      'GET /api/leads/:id'
+      'GET /api/leads/:id',
+      'GET /api/playbooks'
     ]
   })
 })
