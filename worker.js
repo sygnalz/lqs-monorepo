@@ -1566,7 +1566,7 @@ export default {
         const companyId = profile.client_id;
         
         // Execute query to retrieve single client with multi-tenant security
-        // Filter by both client ID and company_id to ensure users can only access clients from their own company
+        // Filter by both client ID and client_id to ensure users can only access clients from their own company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
@@ -1684,7 +1684,7 @@ export default {
         }
         
         // Execute SQL UPDATE to modify client billing information
-        // Filter by both client ID and company_id for security (multi-tenant isolation)
+        // Filter by both client ID and client_id for security (multi-tenant isolation)
         const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
           method: 'PATCH',
           headers: {
