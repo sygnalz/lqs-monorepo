@@ -448,7 +448,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -647,7 +647,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Execute query to retrieve single client with multi-tenant security
         // Filter by both client ID and company_id to ensure users can only access clients from their own company
@@ -740,7 +740,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Parse request body
         const body = await request.json();
@@ -864,7 +864,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
@@ -1033,7 +1033,7 @@ export default {
         }
         
         const { profile } = authResult;
-        const companyId = profile.company_id;
+        const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
         const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
