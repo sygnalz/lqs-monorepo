@@ -186,6 +186,12 @@ const PlaybookList: React.FC<PlaybookListProps> = ({
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
+                          onClick={() => window.location.href = `/playbooks/${playbook.id}`}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
+                          View
+                        </button>
+                        <button
                           onClick={() => onEdit(playbook)}
                           className="text-indigo-600 hover:text-indigo-900"
                         >
