@@ -48,7 +48,7 @@ const PlaybookList: React.FC<PlaybookListProps> = ({
     setSortConfig({ key, direction });
   };
 
-  const sortedPlaybooks = [...playbooks].sort((a, b) => {
+  const sortedPlaybooks = [...(playbooks || [])].sort((a, b) => {
     if (sortConfig.key === 'name') {
       const aValue = a.name.toLowerCase();
       const bValue = b.name.toLowerCase();

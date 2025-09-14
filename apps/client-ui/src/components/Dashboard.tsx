@@ -5,7 +5,7 @@ import { authService } from '../services/auth';
 import { Client } from '../types/client';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
