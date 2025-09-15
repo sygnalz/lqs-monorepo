@@ -78,10 +78,13 @@ async function getAuthenticatedProfile(request, env) {
   
   const profileData = await profileResponse.json();
   if (!profileData || profileData.length === 0) {
+    console.error(`No profile found for user ${user.id}`);
     return {
       error: new Response(JSON.stringify({
         success: false,
-        error: 'User profile not found'
+        error: 'User profile not found',
+        details: 'No profile record exists for this user',
+        user_id: user.id
       }), {
         status: 404,
         headers: {

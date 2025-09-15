@@ -17,12 +17,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const initAuth = () => {
+    const initAuth = async () => {
       const token = authService.getAuthToken()
       if (token) {
-        // This is a placeholder, in a real app you'd validate the token
-        // For now, we just need to know a user session exists.
-        setUser({ id: 'placeholder', email: 'placeholder@example.com' })
+        try {
+          const response = await fetch('https://lqs-uat-worker.charlesheflin.workers.dev/api/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            setUser({ id: userData.id || 'authenticated-user', email: userData.email || 'authenticated@user.com' });
+          } else {
+            authService.clearAuthToken();
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          authService.clearAuthToken();
+          setUser(null);
+        }
       }
       setIsLoading(false)
     }
