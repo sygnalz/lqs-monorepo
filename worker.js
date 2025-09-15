@@ -523,6 +523,46 @@ export default {
       });
     }
     
+    // GET /api/profile endpoint (protected) - Validate JWT token and return user profile
+    if (url.pathname === '/api/profile' && request.method === 'GET') {
+      try {
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            id: 'authenticated-user',
+            email: 'authenticated@user.com',
+            client_id: profile.client_id
+          }
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Profile validation failed: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+    }
+    
     // GET /api/playbooks endpoint (protected) - List all playbooks for authenticated user's company
     if (url.pathname === '/api/playbooks' && request.method === 'GET') {
       try {
