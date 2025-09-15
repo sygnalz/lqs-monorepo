@@ -6,3 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 # Environment variables
 [vars]
 ENVIRONMENT = "UAT"
+
+# Note: Supabase environment variables should be set via:
+# - Shell environment variables for local development
+# - wrangler secrets for production deployment
+# Do not commit secrets to the repository
