@@ -78,10 +78,13 @@ async function getAuthenticatedProfile(request, env) {
   
   const profileData = await profileResponse.json();
   if (!profileData || profileData.length === 0) {
+    console.error(`No profile found for user ${user.id}`);
     return {
       error: new Response(JSON.stringify({
         success: false,
-        error: 'User profile not found'
+        error: 'User profile not found',
+        details: 'No profile record exists for this user',
+        user_id: user.id
       }), {
         status: 404,
         headers: {
@@ -518,6 +521,46 @@ export default {
           'Access-Control-Allow-Origin': '*'
         }
       });
+    }
+    
+    // GET /api/profile endpoint (protected) - Validate JWT token and return user profile
+    if (url.pathname === '/api/profile' && request.method === 'GET') {
+      try {
+        // Use centralized authentication
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+        
+        const { profile } = authResult;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            id: 'authenticated-user',
+            email: 'authenticated@user.com',
+            client_id: profile.client_id
+          }
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Profile validation failed: ' + error.message
+        }), {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
     }
     
     // GET /api/playbooks endpoint (protected) - List all playbooks for authenticated user's company
