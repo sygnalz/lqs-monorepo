@@ -1,6 +1,7 @@
-name = "lqs-uat-environment"
+name = "lqs-uat-worker"
+main = "worker.js"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "dist"
+compatibility_flags = ["nodejs_compat"]
 
 # Environment variables
 [vars]
