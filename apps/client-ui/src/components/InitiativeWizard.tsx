@@ -3,8 +3,7 @@ import { authService } from '../services/auth';
 import { CreateInitiativeRequest } from '../types/initiative';
 import { Lead } from '../types/lead';
 import axios from 'axios';
-
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 interface Playbook {
   id: string;

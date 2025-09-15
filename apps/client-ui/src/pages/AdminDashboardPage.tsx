@@ -6,7 +6,7 @@ import { Client } from '../types/client';
 import { Lead } from '../types/lead';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 type SortDirection = 'asc' | 'desc';
 

@@ -7,7 +7,7 @@ import InitiativeList from '../components/InitiativeList';
 import InitiativeWizard from '../components/InitiativeWizard';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 const InitiativesPage: React.FC = () => {
   const { logout } = useAuth();

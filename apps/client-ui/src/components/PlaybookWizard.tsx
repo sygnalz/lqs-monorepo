@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { authService } from '../services/auth';
 import axios from 'axios';
-
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 interface PlaybookWizardProps {
   onClose: () => void;

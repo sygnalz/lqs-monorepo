@@ -6,8 +6,7 @@ import PlaybookForm from '../components/PlaybookForm';
 import PlaybookList from '../components/PlaybookList';
 import PlaybookWizard from '../components/PlaybookWizard';
 import axios from 'axios';
-
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 interface Playbook {
   id: string;

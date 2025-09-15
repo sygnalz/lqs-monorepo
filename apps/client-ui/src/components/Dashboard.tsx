@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { Client } from '../types/client';
 import axios from 'axios';
-
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
