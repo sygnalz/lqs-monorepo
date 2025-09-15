@@ -7,7 +7,13 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "UAT"
 
-# Note: Supabase environment variables should be set via:
-# - Shell environment variables for local development
-# - wrangler secrets for production deployment
-# Do not commit secrets to the repository
+# For local development, set Supabase environment variables via shell:
+# SUPABASE_URL="${SUPABASE_URL}" \
+# SUPABASE_SERVICE_KEY="${SUPABASE_SERVICE_ROLE_KEY}" \
+# SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY}" \
+# wrangler dev --port 8787 --host 0.0.0.0
+#
+# For production deployment, use wrangler secrets:
+# wrangler secret put SUPABASE_URL
+# wrangler secret put SUPABASE_SERVICE_KEY  
+# wrangler secret put SUPABASE_ANON_KEY
