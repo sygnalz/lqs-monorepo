@@ -1,7 +1,5 @@
 import axios from 'axios';
-
-// This is the definitive backend URL for the UAT environment
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 const signUp = async (data: { email: string; companyName: string; }) => {
   console.log("🔐 [AUTH SERVICE] SignUp function called");
@@ -27,14 +25,12 @@ const signUp = async (data: { email: string; companyName: string; }) => {
     console.error("🔐 [AUTH SERVICE] Error type:", typeof error);
     console.error("🔐 [AUTH SERVICE] Error constructor:", error?.constructor?.name);
     
-    // Log the full axios error object
     if (error.toJSON) {
       console.error("🔐 [AUTH SERVICE] Full Axios Error (toJSON):", error.toJSON());
     } else {
       console.error("🔐 [AUTH SERVICE] Error object (no toJSON):", error);
     }
     
-    // Log specific axios error properties
     if (error.response) {
       console.error("🔐 [AUTH SERVICE] Error response status:", error.response.status);
       console.error("🔐 [AUTH SERVICE] Error response data:", error.response.data);
@@ -45,7 +41,6 @@ const signUp = async (data: { email: string; companyName: string; }) => {
       console.error("🔐 [AUTH SERVICE] Error message:", error.message);
     }
     
-    // Re-throw the error so calling code can handle it
     throw error;
   }
 };
@@ -75,14 +70,12 @@ const signIn = async (data: { email: string; password: string }) => {
     console.error("🔐 [AUTH SERVICE] Error type:", typeof error);
     console.error("🔐 [AUTH SERVICE] Error constructor:", error?.constructor?.name);
     
-    // Log the full axios error object
     if (error.toJSON) {
       console.error("🔐 [AUTH SERVICE] Full Axios Error (toJSON):", error.toJSON());
     } else {
       console.error("🔐 [AUTH SERVICE] Error object (no toJSON):", error);
     }
     
-    // Log specific axios error properties
     if (error.response) {
       console.error("🔐 [AUTH SERVICE] Error response status:", error.response.status);
       console.error("🔐 [AUTH SERVICE] Error response data:", error.response.data);
@@ -93,12 +86,9 @@ const signIn = async (data: { email: string; password: string }) => {
       console.error("🔐 [AUTH SERVICE] Error message:", error.message);
     }
     
-    // Re-throw the error so calling code can handle it
     throw error;
   }
 };
-
-// --- Token Management ---
 
 const setAuthToken = (token: string) => {
   localStorage.setItem('authToken', token);

@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { Initiative, InitiativeProspect } from '../types/initiative';
 import axios from 'axios';
-
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+import { API_URL } from '../config/api';
 
 const InitiativeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
