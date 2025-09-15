@@ -18,29 +18,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const initAuth = async () => {
+      console.log('🔐 [AUTH CONTEXT] Starting token validation...');
       const token = authService.getAuthToken()
+      console.log('🔐 [AUTH CONTEXT] Retrieved token:', { hasToken: !!token, tokenLength: token ? token.length : 0 });
+      
       if (token) {
         try {
-          const response = await fetch('https://lqs-uat-worker.charlesheflin.workers.dev/api/profile', {
+          console.log('🔐 [AUTH CONTEXT] Making token validation request via /api/clients...');
+          const response = await fetch('https://lqs-uat-worker.charlesheflin.workers.dev/api/clients', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           });
           
+          console.log('🔐 [AUTH CONTEXT] Token validation response:', { 
+            status: response.status, 
+            ok: response.ok 
+          });
+          
           if (response.ok) {
             const userData = await response.json();
-            setUser({ id: userData.id || 'authenticated-user', email: userData.email || 'authenticated@user.com' });
+            console.log('🔐 [AUTH CONTEXT] Token validation successful via /api/clients:', { 
+              hasSuccess: !!userData.success, 
+              hasData: !!userData.data 
+            });
+            setUser({ id: 'authenticated-user', email: 'authenticated@user.com' });
           } else {
+            console.error('🔐 [AUTH CONTEXT] Token validation failed with status:', response.status);
+            const errorData = await response.text();
+            console.error('🔐 [AUTH CONTEXT] Error response:', errorData);
             authService.clearAuthToken();
             setUser(null);
           }
         } catch (error) {
-          console.error('Token validation failed:', error);
+          console.error('🔐 [AUTH CONTEXT] Token validation failed:', error);
           authService.clearAuthToken();
           setUser(null);
         }
+      } else {
+        console.log('🔐 [AUTH CONTEXT] No token found in localStorage');
       }
+      console.log('🔐 [AUTH CONTEXT] Setting loading to false');
       setIsLoading(false)
     }
     initAuth()
