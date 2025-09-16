@@ -7,7 +7,7 @@ import PlaybookList from '../components/PlaybookList';
 import PlaybookWizard from '../components/PlaybookWizard';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 interface Playbook {
   id: string;
