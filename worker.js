@@ -124,7 +124,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
       throw new Error('Access denied: Prospect does not belong to your company');
     }
     
-    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
+    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&company_id=eq.${companyId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -135,7 +135,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const tagsData = tagsResponse.ok ? await tagsResponse.json() : [];
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&company_id=eq.${companyId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -363,7 +363,7 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
       };
     }
     
-    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
+    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&company_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -382,7 +382,7 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
       }
     }
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=consent_status&order=created_at.desc&limit=1`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&company_id=eq.${companyId}&select=consent_status&order=created_at.desc&limit=1`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1414,7 +1414,7 @@ export default {
           primary_contact_name: primary_contact_name || null,
           primary_contact_email: primary_contact_email || null,
           primary_contact_phone: primary_contact_phone || null,
-          client_id: companyId
+          company_id: companyId
         };
         
         const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
@@ -1482,8 +1482,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Filter clients by client_id for multi-tenant security
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?client_id=eq.${companyId}&select=*`, {
+        // Filter clients by company_id for multi-tenant security
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1566,8 +1566,8 @@ export default {
         const companyId = profile.client_id;
         
         // Execute query to retrieve single client with multi-tenant security
-        // Filter by both client ID and client_id to ensure users can only access clients from their own company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        // Filter by both client ID and company_id to ensure users can only access clients from their own company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1685,7 +1685,7 @@ export default {
         
         // Execute SQL UPDATE to modify client billing information
         // Filter by both client ID and client_id for security (multi-tenant isolation)
-        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1784,7 +1784,7 @@ export default {
         const companyId = profile.client_id;
         
         // First, verify that the client exists and belongs to the user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1823,7 +1823,7 @@ export default {
         }
         
         // Execute DELETE operation - the CASCADE DELETE constraint will automatically delete associated leads
-        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1902,7 +1902,7 @@ export default {
         const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2071,7 +2071,7 @@ export default {
         const companyId = profile.client_id;
         
         // Security Check: Verify that the client belongs to the authenticated user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2337,7 +2337,7 @@ export default {
         
         // Now verify that the client belongs to the user's company
         const clientId = leadData[0].client_id;
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2558,7 +2558,7 @@ export default {
         
         // Now verify that the client belongs to the user's company (multi-tenant security check)
         const clientId = leadData[0].client_id;
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2755,7 +2755,7 @@ export default {
         
         // Now verify that the client belongs to the user's company (multi-tenant security check)
         const clientId = leadData[0].client_id;
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2971,7 +2971,7 @@ export default {
         
         // Now verify that the client belongs to the user's company (multi-tenant security check)
         const clientId = leadData[0].client_id;
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
