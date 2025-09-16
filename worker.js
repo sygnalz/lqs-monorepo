@@ -3538,6 +3538,26 @@ export default {
       }
     }
 
+    // Handle root path request
+    if (url.pathname === '/' && request.method === 'GET') {
+      return new Response(JSON.stringify({
+        success: true,
+        service: 'LQS UAT Worker API',
+        version: '2.0-final',
+        endpoints: [
+          'GET /api/health - Health check',
+          'POST /api/auth/signin - User authentication', 
+          'POST /api/auth/signup - User registration',
+          'GET /api/clients - List clients (requires auth)'
+        ]
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
     return new Response(JSON.stringify({
       success: false,
       error: 'Endpoint not found'
