@@ -1414,7 +1414,7 @@ export default {
           primary_contact_name: primary_contact_name || null,
           primary_contact_email: primary_contact_email || null,
           primary_contact_phone: primary_contact_phone || null,
-          client_id: companyId
+          company_id: companyId
         };
         
         const createResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
@@ -1483,7 +1483,7 @@ export default {
         const companyId = profile.client_id;
         
         // Filter clients by client_id for multi-tenant security
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?client_id=eq.${companyId}&select=*`, {
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1567,7 +1567,7 @@ export default {
         
         // Execute query to retrieve single client with multi-tenant security
         // Filter by both client ID and client_id to ensure users can only access clients from their own company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1685,7 +1685,7 @@ export default {
         
         // Execute SQL UPDATE to modify client billing information
         // Filter by both client ID and client_id for security (multi-tenant isolation)
-        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1784,7 +1784,7 @@ export default {
         const companyId = profile.client_id;
         
         // First, verify that the client exists and belongs to the user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1823,7 +1823,7 @@ export default {
         }
         
         // Execute DELETE operation - the CASCADE DELETE constraint will automatically delete associated leads
-        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
