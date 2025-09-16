@@ -52,7 +52,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Fetch user's profile from Supabase using the sub (user ID) from token payload
-  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=client_id`, {
+  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=company_id`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -93,7 +93,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Return successful profile data with client_id for API consistency
-  return { profile: { client_id: profileData[0].client_id } };
+  return { profile: { client_id: profileData[0].company_id } };
 }
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
@@ -647,6 +647,46 @@ export default {
           }
         }
         
+        const clientCheckResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const existingClients = await clientCheckResponse.json();
+        
+        if (existingClients.length === 0) {
+          // Create client record using company data
+          const companyResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${clientId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+              'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const companyData = await companyResponse.json();
+          if (companyData.length > 0) {
+            await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                id: clientId,
+                name: companyData[0].name,
+                company_id: clientId
+              })
+            });
+          }
+        }
+
         // Create the playbook record
         const playbookData = {
           name: name,
