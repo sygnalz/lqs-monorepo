@@ -1,14 +1,85 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LQS UAT Client</title>
-    <script type="module" crossorigin src="/assets/index-Cqvp6IEV.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-0mKIyJPc.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LQS UAT Environment</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+        }
+        .status { 
+            background: #e8f5e8; 
+            padding: 15px; 
+            border-radius: 4px; 
+            border-left: 4px solid #4caf50; 
+        }
+        .endpoints { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin-top: 20px; 
+        }
+        .endpoint { 
+            font-family: monospace; 
+            background: #333; 
+            color: #fff; 
+            padding: 8px 12px; 
+            border-radius: 4px; 
+            margin: 5px 0; 
+            display: block; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 LQS UAT Environment</h1>
+        
+        <div class="status">
+            <strong>✅ Environment Status:</strong> Active and Ready for UAT Testing
+        </div>
+        
+        <h2>Available API Endpoints</h2>
+        <div class="endpoints">
+            <strong>Health Check:</strong>
+            <code class="endpoint">GET /api/health</code>
+            
+            <strong>User Registration:</strong>
+            <code class="endpoint">POST /api/auth/signup</code>
+            
+            <strong>Lead Creation:</strong>
+            <code class="endpoint">POST /api/leads</code>
+            
+            <strong>Lead Status Check:</strong>
+            <code class="endpoint">GET /api/leads/:id</code>
+        </div>
+
+        <h2>Environment Details</h2>
+        <ul>
+            <li><strong>Environment:</strong> User Acceptance Testing (UAT)</li>
+            <li><strong>Database:</strong> Connected to Supabase UAT instance</li>
+            <li><strong>Authentication:</strong> Supabase Auth with Admin API</li>
+            <li><strong>Processing:</strong> Queue-based asynchronous lead processing</li>
+        </ul>
+
+        <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+            Lead Qualification System (LQS) - UAT Environment<br>
+            Ready for User Acceptance Testing
+        </div>
+    </div>
+</body>
 </html>
