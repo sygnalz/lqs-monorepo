@@ -52,7 +52,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Fetch user's profile from Supabase using the sub (user ID) from token payload
-  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=client_id`, {
+  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=company_id`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -93,7 +93,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Return successful profile data with client_id for API consistency
-  return { profile: { client_id: profileData[0].client_id } };
+  return { profile: { client_id: profileData[0].company_id } };
 }
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
