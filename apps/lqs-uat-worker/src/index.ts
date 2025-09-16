@@ -397,6 +397,273 @@ app.get('/api/leads', authenticateJWT, async (c) => {
   }
 })
 
+// Get all clients endpoint
+app.get('/api/clients', authenticateJWT, async (c) => {
+  try {
+    const user = c.get('user')
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: clientsData, error: clientsError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .order('created_at', { ascending: false })
+
+    if (clientsError) {
+      return c.json({
+        success: false,
+        message: 'Failed to fetch clients'
+      }, 500)
+    }
+
+    return c.json({
+      success: true,
+      clients: clientsData || []
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+// Create client endpoint
+app.post('/api/clients', authenticateJWT, async (c) => {
+  try {
+    const { 
+      name, 
+      primary_contact_name, 
+      primary_contact_email, 
+      primary_contact_phone, 
+      billing_address, 
+      rate_per_minute, 
+      rate_per_sms, 
+      rate_per_lead 
+    } = await c.req.json()
+    const user = c.get('user')
+    
+    if (!name || !primary_contact_name || !primary_contact_email) {
+      return c.json({
+        success: false,
+        message: 'Name, primary contact name, and primary contact email are required'
+      }, 400)
+    }
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .insert([{
+        company_id: profile.company_id,
+        name: name,
+        primary_contact_name: primary_contact_name,
+        primary_contact_email: primary_contact_email,
+        primary_contact_phone: primary_contact_phone || null,
+        billing_address: billing_address || null,
+        rate_per_minute: rate_per_minute || null,
+        rate_per_sms: rate_per_sms || null,
+        rate_per_lead: rate_per_lead || null
+      }])
+      .select()
+      .single()
+
+    if (clientError) {
+      return c.json({
+        success: false,
+        message: 'Failed to create client'
+      }, 500)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Client created successfully',
+      data: clientData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+// Get specific client endpoint
+app.get('/api/clients/:id', authenticateJWT, async (c) => {
+  try {
+    const clientId = c.req.param('id')
+    const user = c.get('user')
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', clientId)
+      .eq('company_id', profile.company_id)
+      .single()
+
+    if (clientError || !clientData) {
+      return c.json({
+        success: false,
+        message: 'Client not found'
+      }, 404)
+    }
+
+    return c.json({
+      success: true,
+      data: clientData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
+// Update client endpoint
+app.put('/api/clients/:id', authenticateJWT, async (c) => {
+  try {
+    const clientId = c.req.param('id')
+    const { 
+      name, 
+      primary_contact_name, 
+      primary_contact_email, 
+      primary_contact_phone, 
+      billing_address, 
+      rate_per_minute, 
+      rate_per_sms, 
+      rate_per_lead 
+    } = await c.req.json()
+    const user = c.get('user')
+    
+    if (!name || !primary_contact_name || !primary_contact_email) {
+      return c.json({
+        success: false,
+        message: 'Name, primary contact name, and primary contact email are required'
+      }, 400)
+    }
+
+    // Use SERVICE_ROLE_KEY for trusted backend operations, fallback to ANON_KEY
+    const supabaseKey = c.env.SUPABASE_SERVICE_KEY || c.env.SUPABASE_SERVICE_ROLE_KEY || c.env.SUPABASE_ANON_KEY
+    const supabase = createClient(c.env.SUPABASE_URL, supabaseKey)
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .eq('id', user.sub)
+      .single()
+
+    if (profileError || !profile) {
+      return c.json({
+        success: false,
+        message: 'User profile not found'
+      }, 404)
+    }
+
+    // First verify the client belongs to the user's company
+    const { data: existingClient, error: fetchError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .eq('company_id', profile.company_id)
+      .single()
+
+    if (fetchError || !existingClient) {
+      return c.json({
+        success: false,
+        message: 'Client not found'
+      }, 404)
+    }
+
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .update({
+        name: name,
+        primary_contact_name: primary_contact_name,
+        primary_contact_email: primary_contact_email,
+        primary_contact_phone: primary_contact_phone || null,
+        billing_address: billing_address || null,
+        rate_per_minute: rate_per_minute || null,
+        rate_per_sms: rate_per_sms || null,
+        rate_per_lead: rate_per_lead || null
+      })
+      .eq('id', clientId)
+      .eq('company_id', profile.company_id)
+      .select()
+      .single()
+
+    if (clientError) {
+      return c.json({
+        success: false,
+        message: 'Failed to update client'
+      }, 500)
+    }
+
+    return c.json({
+      success: true,
+      message: 'Client updated successfully',
+      data: clientData
+    })
+
+  } catch (error) {
+    return c.json({
+      success: false,
+      message: 'Internal server error'
+    }, 500)
+  }
+})
+
 // Default route
 app.get('/', (c) => {
   return c.json({ 
@@ -408,7 +675,11 @@ app.get('/', (c) => {
       'POST /api/auth/signin', 
       'POST /api/leads',
       'GET /api/leads',
-      'GET /api/leads/:id'
+      'GET /api/leads/:id',
+      'GET /api/clients',
+      'POST /api/clients',
+      'GET /api/clients/:id',
+      'PUT /api/clients/:id'
     ]
   })
 })
