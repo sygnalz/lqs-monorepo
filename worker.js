@@ -1482,8 +1482,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Filter clients by client_id for multi-tenant security
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?client_id=eq.${companyId}&select=*`, {
+        // Filter companies by id for multi-tenant security
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1901,8 +1901,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Security Check: Verify that the client belongs to the authenticated user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        // Security Check: Verify that the company belongs to the authenticated user
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${clientId}&id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -2070,8 +2070,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Security Check: Verify that the client belongs to the authenticated user's company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        // Security Check: Verify that the company belongs to the authenticated user
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?id=eq.${clientId}&id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
