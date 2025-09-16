@@ -52,7 +52,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Fetch user's profile from Supabase using the sub (user ID) from token payload
-  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=client_id`, {
+  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/companies?user_id=eq.${payload.sub}&select=id as client_id`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
