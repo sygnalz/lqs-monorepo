@@ -120,11 +120,11 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const prospect = prospectData[0];
     
-    if (prospect.clients.client_id !== companyId) {
+    if (prospect.clients.client_id !== clientId) {
       throw new Error('Access denied: Prospect does not belong to your company');
     }
     
-    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
+    const tagsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospect_tags?prospect_id=eq.${prospectId}&client_id=eq.${clientId}&select=tag,applied_at,tags_taxonomy!inner(definition)`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -135,7 +135,7 @@ async function aggregateProspectContext(prospectId, authProfile, env) {
     
     const tagsData = tagsResponse.ok ? await tagsResponse.json() : [];
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${clientId}&select=type,recipient,content,created_at,external_id&order=created_at.desc&limit=50`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -356,14 +356,14 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
     
     const prospect = prospectData[0];
     
-    if (prospect.clients.client_id !== companyId) {
+    if (prospect.clients.client_id !== clientId) {
       return {
         success: false,
         error: 'Access denied: Prospect does not belong to your company'
       };
     }
     
-    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&client_id=eq.${companyId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
+    const rateLimitResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/task_queue?prospect_id=eq.${prospectId}&client_id=eq.${clientId}&status=eq.PENDING&created_at=gte.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -382,7 +382,7 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
       }
     }
     
-    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${companyId}&select=consent_status&order=created_at.desc&limit=1`, {
+    const communicationsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/communications?lead_id=eq.${prospectId}&client_id=eq.${clientId}&select=consent_status&order=created_at.desc&limit=1`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -421,7 +421,7 @@ async function scheduleProspectAction(prospectId, authProfile, env) {
     
     const taskData = {
       prospect_id: prospectId,
-      client_id: companyId,
+      client_id: clientId,
       action_type: aiDecision.action_type,
       scheduled_for: aiDecision.scheduled_for,
       ai_rationale: aiDecision.ai_rationale,
