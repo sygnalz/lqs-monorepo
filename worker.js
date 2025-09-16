@@ -92,13 +92,13 @@ async function getAuthenticatedProfile(request, env) {
     };
   }
   
-  // Return successful profile data with client_id for API consistency
-  return { profile: { client_id: profileData[0].company_id } };
+  // Return successful profile data with company_id for API consistency
+  return { profile: { company_id: profileData[0].company_id } };
 }
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
   try {
-    const clientId = authProfile.client_id;
+    const clientId = authProfile.company_id;
     
     const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,client_id)`, {
       method: 'GET',
@@ -328,7 +328,7 @@ Consider the prospect's engagement level, recent communications, and current ini
 
 async function scheduleProspectAction(prospectId, authProfile, env) {
   try {
-    const clientId = authProfile.client_id;
+    const clientId = authProfile.company_id;
     
     const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/leads?id=eq.${prospectId}&select=*,clients!inner(id,client_id)`, {
       method: 'GET',
