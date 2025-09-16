@@ -1482,8 +1482,8 @@ export default {
         const { profile } = authResult;
         const companyId = profile.client_id;
         
-        // Filter clients by client_id for multi-tenant security
-        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?client_id=eq.${companyId}&select=*`, {
+        // Filter clients by company_id for multi-tenant security
+        const clientsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?company_id=eq.${companyId}&select=*`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -1566,8 +1566,8 @@ export default {
         const companyId = profile.client_id;
         
         // Execute query to retrieve single client with multi-tenant security
-        // Filter by both client ID and client_id to ensure users can only access clients from their own company
-        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&client_id=eq.${companyId}`, {
+        // Filter by both client ID and company_id to ensure users can only access clients from their own company
+        const clientResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/clients?id=eq.${clientId}&company_id=eq.${companyId}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,

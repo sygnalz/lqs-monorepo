@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = (import.meta as any).env.VITE_API_URL || 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 const CreateLeadPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();

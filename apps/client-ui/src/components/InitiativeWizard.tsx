@@ -4,7 +4,7 @@ import { CreateInitiativeRequest } from '../types/initiative';
 import { Lead } from '../types/lead';
 import axios from 'axios';
 
-const API_URL = 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
+const API_URL = (import.meta as any).env.VITE_API_URL || 'https://lqs-uat-worker.charlesheflin.workers.dev/api';
 
 interface Playbook {
   id: string;
