@@ -52,7 +52,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Fetch user's profile from Supabase using the sub (user ID) from token payload
-  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=company_id`, {
+  const profileResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/profiles?id=eq.${payload.sub}&select=client_id`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
@@ -93,7 +93,7 @@ async function getAuthenticatedProfile(request, env) {
   }
   
   // Return successful profile data with client_id for API consistency
-  return { profile: { client_id: profileData[0].company_id } };
+  return { profile: { client_id: profileData[0].client_id } };
 }
 
 async function aggregateProspectContext(prospectId, authProfile, env) {
@@ -3556,6 +3556,403 @@ export default {
           'Access-Control-Allow-Origin': '*'
         }
       });
+    }
+
+    // POST /api/prospects/upload - Upload CSV file with prospects
+    if (url.pathname === '/api/prospects/upload' && request.method === 'POST') {
+      try {
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+
+        const requestBody = await request.json();
+        const { csvData, fieldMapping } = requestBody;
+
+        if (!csvData || !Array.isArray(csvData) || csvData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'CSV data is required and must be a non-empty array'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        if (!fieldMapping || typeof fieldMapping !== 'object') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Field mapping is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const normalizePhoneE164 = (phone) => {
+          if (!phone) return null;
+          
+          const numericOnly = phone.replace(/\D/g, '');
+          
+          // Handle US 10-digit numbers by adding +1
+          if (numericOnly.length === 10) {
+            return `+1${numericOnly}`;
+          }
+          
+          if (numericOnly.length > 10 && !numericOnly.startsWith('+')) {
+            return `+${numericOnly}`;
+          }
+          
+          return numericOnly.length > 0 ? `+${numericOnly}` : null;
+        };
+
+        const processedProspects = [];
+        const errors = [];
+
+        for (let i = 0; i < csvData.length; i++) {
+          const row = csvData[i];
+          
+          try {
+            const prospectData = {};
+            
+            for (const [systemField, csvField] of Object.entries(fieldMapping)) {
+              if (csvField && row[csvField] !== undefined) {
+                prospectData[systemField] = row[csvField];
+              }
+            }
+
+            // Validate required fields
+            const requiredFields = ['first_name', 'phone_e164', 'timezone', 'path_hint', 'consent_status', 'consent_source', 'consent_timestamp_iso'];
+            const missingFields = requiredFields.filter(field => !prospectData[field]);
+            
+            if (missingFields.length > 0) {
+              errors.push(`Row ${i + 1}: Missing required fields: ${missingFields.join(', ')}`);
+              continue;
+            }
+
+            const normalizedPhone = normalizePhoneE164(prospectData.phone_e164);
+            if (!normalizedPhone) {
+              errors.push(`Row ${i + 1}: Invalid phone number format`);
+              continue;
+            }
+            prospectData.phone_e164 = normalizedPhone;
+
+            // Validate consent_status
+            if (!['granted', 'denied'].includes(prospectData.consent_status)) {
+              errors.push(`Row ${i + 1}: consent_status must be 'granted' or 'denied'`);
+              continue;
+            }
+
+            // Add client_id
+            prospectData.client_id = clientId;
+
+            processedProspects.push(prospectData);
+
+          } catch (rowError) {
+            errors.push(`Row ${i + 1}: ${rowError.message}`);
+          }
+        }
+
+        if (processedProspects.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No valid prospects to process',
+            errors: errors
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const upsertResults = [];
+        const upsertErrors = [];
+
+        for (const prospect of processedProspects) {
+          try {
+            const upsertResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospects`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+                'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates'
+              },
+              body: JSON.stringify(prospect)
+            });
+
+            if (upsertResponse.ok) {
+              const result = await upsertResponse.json();
+              upsertResults.push(result);
+            } else {
+              const errorData = await upsertResponse.text();
+              upsertErrors.push(`Failed to upsert prospect with phone ${prospect.phone_e164}: ${errorData}`);
+            }
+
+          } catch (upsertError) {
+            upsertErrors.push(`Failed to upsert prospect with phone ${prospect.phone_e164}: ${upsertError.message}`);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: {
+            processed: processedProspects.length,
+            successful: upsertResults.length,
+            failed: upsertErrors.length,
+            errors: [...errors, ...upsertErrors]
+          }
+        }), { status: 201, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
+      } catch (error) {
+        console.error('Error uploading prospects:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Internal server error'
+        }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
+    // GET /api/prospects - List prospects with filtering and pagination
+    if (url.pathname === '/api/prospects' && request.method === 'GET') {
+      try {
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+
+        const urlParams = new URLSearchParams(url.search);
+        const limit = urlParams.get('limit') || '50';
+        const offset = urlParams.get('offset') || '0';
+        const search = urlParams.get('search') || '';
+
+        let query = `client_id=eq.${clientId}&limit=${limit}&offset=${offset}&order=created_at.desc`;
+        
+        // Add search filter if provided
+        if (search) {
+          query += `&or=(first_name.ilike.*${search}*,last_name.ilike.*${search}*,email.ilike.*${search}*,phone_e164.ilike.*${search}*)`;
+        }
+
+        const prospectsResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospects?${query}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!prospectsResponse.ok) {
+          const errorData = await prospectsResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch prospects: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const prospectsData = await prospectsResponse.json();
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: prospectsData
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
+      } catch (error) {
+        console.error('Error fetching prospects:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Internal server error'
+        }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
+    // GET /api/prospects/:id - Get single prospect
+    if (url.pathname.startsWith('/api/prospects/') && url.pathname.split('/').length === 4 && request.method === 'GET') {
+      try {
+        const prospectId = url.pathname.split('/api/prospects/')[1];
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+
+        const prospectResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospects?id=eq.${prospectId}&client_id=eq.${clientId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!prospectResponse.ok) {
+          const errorData = await prospectResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to fetch prospect: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const prospectData = await prospectResponse.json();
+
+        if (prospectData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect not found'
+          }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: prospectData[0]
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
+      } catch (error) {
+        console.error('Error fetching prospect:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Internal server error'
+        }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/prospects/') && url.pathname.split('/').length === 4 && request.method === 'PUT') {
+      try {
+        const prospectId = url.pathname.split('/api/prospects/')[1];
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+
+        const requestBody = await request.json();
+        
+        // Remove client_id and id from update data to prevent tampering
+        delete requestBody.client_id;
+        delete requestBody.id;
+        delete requestBody.created_at;
+
+        // Normalize phone if provided
+        if (requestBody.phone_e164) {
+          const normalizePhoneE164 = (phone) => {
+            if (!phone) return null;
+            const numericOnly = phone.replace(/\D/g, '');
+            if (numericOnly.length === 10) {
+              return `+1${numericOnly}`;
+            }
+            if (numericOnly.length > 10 && !numericOnly.startsWith('+')) {
+              return `+${numericOnly}`;
+            }
+            return numericOnly.length > 0 ? `+${numericOnly}` : null;
+          };
+          
+          requestBody.phone_e164 = normalizePhoneE164(requestBody.phone_e164);
+        }
+
+        const updateResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospects?id=eq.${prospectId}&client_id=eq.${clientId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!updateResponse.ok) {
+          const errorData = await updateResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to update prospect: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const updatedData = await updateResponse.json();
+
+        if (updatedData.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect not found or access denied'
+          }), { status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          data: updatedData[0]
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
+      } catch (error) {
+        console.error('Error updating prospect:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Internal server error'
+        }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+
+    // DELETE /api/prospects/:id - Delete prospect
+    if (url.pathname.startsWith('/api/prospects/') && url.pathname.split('/').length === 4 && request.method === 'DELETE') {
+      try {
+        const prospectId = url.pathname.split('/api/prospects/')[1];
+        if (!prospectId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Prospect ID is required'
+          }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        const authResult = await getAuthenticatedProfile(request, env);
+        if (authResult.error) {
+          return authResult.error;
+        }
+
+        const { profile } = authResult;
+        const clientId = profile.client_id;
+
+        const deleteResponse = await fetch(`https://kwebsccgtmntljdrzwet.supabase.co/rest/v1/prospects?id=eq.${prospectId}&client_id=eq.${clientId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+            'apikey': `${env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!deleteResponse.ok) {
+          const errorData = await deleteResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to delete prospect: ' + errorData
+          }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Prospect deleted successfully'
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+
+      } catch (error) {
+        console.error('Error deleting prospect:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Internal server error'
+        }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
     }
 
     return new Response(JSON.stringify({

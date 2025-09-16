@@ -15,6 +15,8 @@ import PlaybooksPage from './pages/PlaybooksPage'
 import InitiativesPage from './pages/InitiativesPage'
 import InitiativeDetail from './components/InitiativeDetail'
 import PlaybookDetail from './components/PlaybookDetail'
+import ProspectsPage from './pages/ProspectsPage'
+import ProspectDetail from './components/ProspectDetail'
 
 function App() {
   return (
@@ -117,6 +119,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProspectDetailPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/prospects" 
+            element={
+              <ProtectedRoute>
+                <ProspectsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/prospects/:id" 
+            element={
+              <ProtectedRoute>
+                <ProspectDetail />
               </ProtectedRoute>
             } 
           />
